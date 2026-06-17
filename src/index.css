@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "D-DIN Bold";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("D-DIN Bold"),
+    local("D-DIN-Bold"),
+    url("/fonts/D-DIN-Bold.woff2") format("woff2"),
+    url("/fonts/D-DIN-Bold.woff") format("woff");
+}
+
+@font-face {
+  font-family: "D-DIN Bold";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src:
+    local("D-DIN Bold"),
+    local("D-DIN-Bold"),
+    url("/fonts/D-DIN-Bold.woff2") format("woff2"),
+    url("/fonts/D-DIN-Bold.woff") format("woff");
+}
+
+@font-face {
+  font-family: "D-DIN Bold";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src:
+    local("D-DIN Bold"),
+    local("D-DIN-Bold"),
+    url("/fonts/D-DIN-Bold.woff2") format("woff2"),
+    url("/fonts/D-DIN-Bold.woff") format("woff");
+}
+
+@font-face {
+  font-family: "D-DIN Bold";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    local("D-DIN Bold"),
+    local("D-DIN-Bold"),
+    url("/fonts/D-DIN-Bold.woff2") format("woff2"),
+    url("/fonts/D-DIN-Bold.woff") format("woff");
+}
+
+:root {
+  color-scheme: dark;
+  background: #06070e;
+  font-family: "D-DIN Bold", "D-DIN", "DIN Alternate", "Arial Narrow", Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  background: #06070e;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.beacon-app,
+.beacon-app * {
+  font-family: "D-DIN Bold", "D-DIN", "DIN Alternate", "Arial Narrow", Arial, sans-serif !important;
+}
