@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600;700&family=Archivo:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html{scroll-behavior:auto;}
+  body{margin:0;background:#06070e;}
+  ::selection{background:rgba(123,140,255,.32);}
+  @keyframes ba-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  @keyframes ba-pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.9;transform:scale(1.04)}}
+  @keyframes ba-drift{0%{transform:transl(0,0)}100%{transform:translateY(-40px)}}
+  @keyframes ba-scan{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+  @keyframes ba-blink{0%,100%{opacity:1}50%{opacity:.25}}
+  @keyframes ba-rise{0%{opacity:0;transform:translateY(40px)}100%{opacity:1;transform:translateY(0)}}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="--bg:#06070e;--bg2:#0a0c16;--panel:rgba(255,255,255,.04);--border:rgba(255,255,255,.09);--text:#eef1f7;--muted:#98a2bb;--faint:#5a637c;--a:#5b8cff;--b:#a06bff;background:var(--bg);color:var(--text);font-family:'Archivo',sans-serif,system-ui,sans-serif;overflow-x:clip;position:relative;">
+
+  <!-- ================= NAV ================= -->
+  <nav data-nav style="position:fixed;top:0;left:0;right:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px clamp(20px,3.4vw,52px);transition:background .4s ease,border-color .4s ease,backdrop-filter .4s ease;border-bottom:1px solid transparent;">
+    <a href="#" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;flex:0 0 auto;">
+      <span style="position:relative;width:25px;height:25px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+        <span style="position:absolute;width:25px;height:25px;border-radius:50%;border:1px solid rgba(123,140,255,.45);"></span>
+        <span style="position:absolute;width:15px;height:15px;border-radius:50%;border:1px solid rgba(160,107,255,.6);"></span>
+        <span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 12px rgba(123,140,255,.9);"></span>
+      </span>
+      <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:18px;letter-spacing:.06em;text-transform:uppercase;">Beacon&nbsp;Atlas</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:clamp(18px,2.7vw,46px);">
+      <a href="#" style="text-decoration:none;font-family:'Archivo',sans-serif;font-weight:700;font-size:14px;letter-spacing:.03em;text-transform:uppercase;color:rgba(255,255,255,.8);white-space:nowrap;transition:color .2s;cursor:pointer;" data-jump="sec-platform" style-hover="color:#fff;">Platform</a>
+      <a href="#" style="text-decoration:none;font-family:'Archivo',sans-serif;font-weight:700;font-size:14px;letter-spacing:.03em;text-transform:uppercase;color:rgba(255,255,255,.8);white-space:nowrap;transition:color .2s;cursor:pointer;" data-jump="sec-pipelines" style-hover="color:#fff;">Pipelines</a>
+      <a href="#" style="text-decoration:none;font-family:'Archivo',sans-serif;font-weight:700;font-size:14px;letter-spacing:.03em;text-transform:uppercase;color:rgba(255,255,255,.8);white-space:nowrap;transition:color .2s;cursor:pointer;" data-jump="sec-security" style-hover="color:#fff;">Security</a>
+      <a href="#" style="text-decoration:none;font-family:'Archivo',sans-serif;font-weight:700;font-size:14px;letter-spacing:.03em;text-transform:uppercase;color:rgba(255,255,255,.8);white-space:nowrap;transition:color .2s;cursor:pointer;" data-jump="sec-global" style-hover="color:#fff;">Global</a>
+    </div>
+    <button style="flex:0 0 auto;display:inline-flex;align-items:center;gap:18px;font-family:'Archivo',sans-serif;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#fff;border:1px solid rgba(255,255,255,.24);border-radius:6px;padding:11px 16px;cursor:pointer;background:rgba(255,255,255,.04);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:background .2s,border-color .2s;" style-hover="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5);">
+      <span style="display:inline-flex;align-items:center;gap:9px;"><span style="width:6px;height:6px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 9px var(--a);"></span>Try the platform</span>
+      <span style="font-size:15px;">&rarr;</span>
+    </button>
+  </nav>
+
+  <!-- ================= HERO ================= -->
+  <section data-hero style="position:relative;min-height:100vh;overflow:hidden;background:radial-gradient(120% 92% at 50% 0%,#0b1024 0%,#070912 55%,#06070e 100%);">
+    <canvas ref="{{ auroraRef }}" style="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;"></canvas>
+    <div style="position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(6,7,14,.55) 0%,rgba(6,7,14,0) 20%,rgba(6,7,14,0) 46%,rgba(6,7,14,.5) 78%,rgba(6,7,14,.94) 100%);"></div>
+    <div style="position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(78% 62% at 20% 92%,rgba(6,7,14,.62),transparent 62%);"></div>
+
+    <div style="position:absolute;left:clamp(20px,3.4vw,52px);right:clamp(20px,3.4vw,52px);bottom:clamp(46px,7vh,94px);z-index:2;display:flex;flex-direction:column;align-items:flex-start;">
+      <div data-reveal style="opacity:0;transform:translateY(20px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:rgba(208,216,255,.85);display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 12px var(--a);"></span>
+        Secure AI · Life-critical documents
+      </div>
+      <h1 data-reveal data-reveal-delay="90" style="opacity:0;transform:translateY(28px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(34px,4.6vw,68px);line-height:1.0;letter-spacing:-.01em;text-transform:uppercase;margin:0;max-width:18ch;text-wrap:balance;color:#fff;text-shadow:0 8px 40px rgba(0,0,0,.35);">{{ headline }}</h1>
+      <div data-reveal data-reveal-delay="280" style="opacity:0;transform:translateY(24px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);display:flex;gap:14px;margin-top:36px;flex-wrap:wrap;align-items:center;">
+        <button style="font-family:'Archivo',sans-serif;display:inline-flex;align-items:center;gap:clamp(28px,4vw,56px);font-weight:700;font-size:13.5px;letter-spacing:.14em;text-transform:uppercase;color:#fff;border:1px solid rgba(255,255,255,.42);border-radius:5px;padding:16px 22px;cursor:pointer;background:rgba(10,12,22,.32);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background .2s,border-color .2s;" style-hover="background:rgba(255,255,255,.13);border-color:#fff;">Try the platform <span style="font-size:16px;">&rarr;</span></button>
+        <button style="font-family:'Archivo',sans-serif;font-weight:700;font-size:13.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.82);border:0;border-radius:5px;padding:16px 14px;cursor:pointer;background:transparent;transition:color .2s;" style-hover="color:#fff;">See how it works</button>
+      </div>
+    </div>
+
+    <div data-reveal data-reveal-delay="420" style="opacity:0;transform:translateY(16px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);position:absolute;right:clamp(20px,3.4vw,52px);bottom:clamp(46px,7vh,94px);z-index:2;display:flex;flex-direction:column;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:rgba(208,216,255,.6);">
+      Scroll
+      <span style="width:1px;height:46px;background:linear-gradient(180deg,var(--a),transparent);"></span>
+    </div>
+  </section>
+
+  <!-- ===== OLD HERO (mockup) REMOVED FROM VIEW ===== -->
+  <section style="display:none;position:relative;min-height:100vh;flex-direction:column;align-items:center;justify-content:flex-start;padding:152px 24px 80px;text-align:center;overflow:hidden;">
+    <div data-parallax="0.12" style="position:absolute;top:-22%;left:50%;width:1100px;height:1100px;transform:translateX(-50%);background:radial-gradient(circle at 50% 40%,rgba(91,140,255,.30),rgba(160,107,255,.10) 38%,transparent 62%);filter:blur(8px);pointer-events:none;z-index:0;"></div>
+    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(circle at 50% 30%,#000,transparent 72%);-webkit-mask-image:radial-gradient(circle at 50% 30%,#000,transparent 72%);pointer-events:none;z-index:0;"></div>
+
+    <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;max-width:980px;">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);display:inline-flex;align-items:center;gap:10px;padding:7px 16px 7px 8px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.03);font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);">
+        <span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 10px var(--a);"></span>
+        Secure AI for life-critical documents
+      </div>
+
+      <h1 data-reveal data-reveal-delay="80" style="opacity:0;transform:translateY(30px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);font-family:'Archivo',sans-serif;font-weight:400;font-size:clamp(42px,7vw,98px);line-height:1.0;letter-spacing:-.012em;margin:30px 0 0;max-width:15ch;text-wrap:balance;">{{ headline }}</h1>
+
+      <p data-reveal data-reveal-delay="180" style="opacity:0;transform:translateY(30px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);font-size:clamp(16px,1.5vw,20px);line-height:1.6;color:var(--muted);max-width:60ch;margin:26px 0 0;">Beacon Atlas reads the notices, forms, and emails that decide your future — and turns them into clear, secure, step-by-step guidance you can actually act on.</p>
+
+      <div data-reveal data-reveal-delay="280" style="opacity:0;transform:translateY(30px);transition:opacity .3s cubic-bezier(.2,.7,.2,1),transform .3s cubic-bezier(.2,.7,.2,1);display:flex;gap:14px;margin-top:38px;flex-wrap:wrap;justify-content:center;">
+        <button style="font-family:'Archivo',sans-serif;display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:15px;color:#fff;border:0;border-radius:999px;padding:15px 28px;cursor:pointer;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 14px 40px -12px rgba(123,140,255,.8),inset 0 1px 0 rgba(255,255,255,.22);transition:transform .2s,box-shadow .2s;" style-hover="transform:translateY(-2px);box-shadow:0 20px 48px -12px rgba(123,140,255,.95),inset 0 1px 0 rgba(255,255,255,.22);"><span style="width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px rgba(255,255,255,.9);"></span>Try the platform</button>
+        <button style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;color:var(--text);border:1px solid var(--border);border-radius:999px;padding:15px 28px;cursor:pointer;background:rgba(255,255,255,.04);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:background .2s,border-color .2s;" style-hover="background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2);">See how it works</button>
+      </div>
+    </div>
+
+    <!-- product mockup + floating chips -->
+    <div style="position:relative;z-index:2;width:100%;max-width:1080px;margin-top:64px;">
+      <!-- floating context chips -->
+      <div data-parallax="0.05" style="position:absolute;left:-44px;top:54px;z-index:3;animation:ba-float 7s ease-in-out infinite;">
+        <div data-reveal style="opacity:0;transform:translateY(20px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:14px;background:rgba(13,16,28,.82);border:1px solid var(--border);backdrop-filter:blur(8px);box-shadow:0 20px 50px -20px rgba(0,0,0,.7);"><span style="width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#7aa2ff);"></span><span style="font-size:13px;font-weight:600;">Immigration</span></div>
+      </div>
+      <div data-parallax="0.09" style="position:absolute;right:-56px;top:18px;z-index:3;animation:ba-float 8s ease-in-out infinite .6s;">
+        <div data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(20px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:14px;background:rgba(13,16,28,.82);border:1px solid var(--border);backdrop-filter:blur(8px);box-shadow:0 20px 50px -20px rgba(0,0,0,.7);"><span style="width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,#a06bff,#c08bff);"></span><span style="font-size:13px;font-weight:600;">Medical</span></div>
+      </div>
+      <div data-parallax="0.07" style="position:absolute;left:-30px;bottom:80px;z-index:3;animation:ba-float 9s ease-in-out infinite .9s;">
+        <div data-reveal data-reveal-delay="200" style="opacity:0;transform:translateY(20px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:14px;background:rgba(13,16,28,.82);border:1px solid var(--border);backdrop-filter:blur(8px);box-shadow:0 20px 50px -20px rgba(0,0,0,.7);"><span style="width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#a06bff);"></span><span style="font-size:13px;font-weight:600;">Housing</span></div>
+      </div>
+      <div data-parallax="0.06" style="position:absolute;right:-30px;bottom:54px;z-index:3;animation:ba-float 7.5s ease-in-out infinite .3s;">
+        <div data-reveal data-reveal-delay="260" style="opacity:0;transform:translateY(20px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:14px;background:rgba(13,16,28,.82);border:1px solid var(--border);backdrop-filter:blur(8px);box-shadow:0 20px 50px -20px rgba(0,0,0,.7);"><span style="width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,#7aa2ff,#a06bff);"></span><span style="font-size:13px;font-weight:600;">Legal notice</span></div>
+      </div>
+
+      <div data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(44px) scale(.98);transition:opacity .35s cubic-bezier(.2,.7,.2,1),transform .35s cubic-bezier(.2,.7,.2,1);position:relative;z-index:2;border-radius:22px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.96),rgba(9,11,19,.96));box-shadow:0 50px 120px -40px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02) inset;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);">
+          <div style="display:flex;gap:7px;"><span style="width:11px;height:11px;border-radius:50%;background:#ff5f57;"></span><span style="width:11px;height:11px;border-radius:50%;background:#febc2e;"></span><span style="width:11px;height:11px;border-radius:50%;background:#28c840;"></span></div>
+          <div style="margin-left:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--faint);">beacon-atlas.app / case&nbsp;U-2291</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7fe3a0;"><span style="width:7px;height:7px;border-radius:50%;background:#28c840;box-shadow:0 0 8px #28c840;"></span>End-to-end encrypted</div>
+        </div>
+        <div style="display:grid;grid-template-columns:0.82fr 1.18fr;gap:0;min-height:380px;">
+          <!-- left: document -->
+          <div style="padding:26px;border-right:1px solid var(--border);background:rgba(255,255,255,.012);display:flex;flex-direction:column;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin-bottom:14px;">Uploaded · PDF</div>
+            <div style="position:relative;flex:1;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#13151f,#0c0e16);padding:20px 18px;overflow:hidden;">
+              <div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;color:#cdd4e6;margin-bottom:4px;">Notice to Appear</div>
+              <div style="font-size:11px;color:var(--faint);margin-bottom:16px;">Dept. of Homeland Security · Form I-862</div>
+              <div style="height:7px;width:92%;border-radius:4px;background:rgba(255,255,255,.08);margin-bottom:9px;"></div>
+              <div style="height:7px;width:84%;border-radius:4px;background:rgba(255,255,255,.08);margin-bottom:9px;"></div>
+              <div style="height:7px;width:96%;border-radius:4px;background:rgba(255,255,255,.06);margin-bottom:9px;"></div>
+              <div style="height:7px;width:62%;border-radius:4px;background:rgba(255,255,255,.06);margin-bottom:9px;"></div>
+              <div style="height:7px;width:88%;border-radius:4px;background:rgba(255,255,255,.06);margin-bottom:9px;"></div>
+              <div style="margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border-radius:8px;background:rgba(255,95,87,.12);border:1px solid rgba(255,95,87,.32);font-size:11px;color:#ff9a93;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:#ff5f57;animation:ba-blink 1.6s infinite;"></span>Deadline buried on p.4</div>
+              <div style="position:absolute;left:0;right:0;top:0;height:54px;background:linear-gradient(180deg,rgba(91,140,255,.25),transparent);animation:ba-scan 3.4s ease-in-out infinite;mix-blend-mode:screen;"></div>
+            </div>
+          </div>
+          <!-- right: action plan -->
+          <div style="padding:24px 26px;display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+              <div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:16px;">Action plan generated</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;">5 steps · 4.2s</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;gap:14px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--a);font-weight:500;">01</span><div><div style="font-size:13.5px;font-weight:600;">What matters</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">You must attend an immigration hearing — this letter starts your case.</div></div></div>
+              <div style="display:flex;gap:14px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--a);font-weight:500;">02</span><div><div style="font-size:13.5px;font-weight:600;">If ignored</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Missing the date can lead to a removal order in your absence.</div></div></div>
+              <div style="display:flex;gap:14px;padding:13px 15px;border-radius:12px;background:rgba(91,140,255,.07);border:1px solid rgba(123,140,255,.28);"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--a);font-weight:500;">03</span><div><div style="font-size:13.5px;font-weight:600;">What to do next</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Confirm your address with the court and file Form EOIR-33 by Mar 14.</div></div></div>
+              <div style="display:flex;gap:14px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--a);font-weight:500;">04</span><div><div style="font-size:13.5px;font-weight:600;">Who can help</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">3 accredited legal-aid orgs near you offer free representation.</div></div></div>
+              <div style="display:flex;gap:14px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--a);font-weight:500;">05</span><div><div style="font-size:13.5px;font-weight:600;">Your checklist</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">4 tasks added · next due in 6 days.</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div data-reveal data-reveal-delay="400" style="opacity:0;transform:translateY(20px);transition:.3s;margin-top:54px;display:flex;flex-direction:column;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);">
+      Scroll to begin
+      <span style="width:1px;height:40px;background:linear-gradient(180deg,var(--a),transparent);"></span>
+    </div>
+  </section>
+
+  <!-- ================= PROBLEM (pinned) ================= -->
+  <section data-scene="problem" style="position:relative;height:260vh;">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:104px 24px 40px;box-sizing:border-box;">
+      <div style="position:absolute;top:14%;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(circle,rgba(160,107,255,.16),transparent 65%);pointer-events:none;"></div>
+      <div style="position:relative;z-index:2;text-align:center;max-width:760px;margin-bottom:34px;">
+        <div style="display:inline-flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:22px;"><span style="width:34px;height:1px;background:linear-gradient(90deg,var(--a),transparent);"></span>The problem</div>
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(28px,4.2vw,52px);line-height:1.08;letter-spacing:-.02em;margin:0;text-wrap:balance;">A single envelope can hold a deadline you can't afford to miss.</h2>
+        <p style="font-size:clamp(15px,1.4vw,18px);color:var(--muted);line-height:1.6;margin:20px auto 0;max-width:54ch;">Dense legal language. Buried dates. Forms that reference other forms. In a crisis, the hardest part is often just understanding the paperwork it creates.</p>
+      </div>
+
+      <!-- scatter stage -->
+      <div data-clarity style="position:relative;width:min(620px,92vw);">
+        <div data-clarity-panel style="position:absolute;inset:-22px -18px;border-radius:22px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.7),rgba(9,11,19,.6));opacity:0;"></div>
+        <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div data-chip data-from="-440,-180,-16" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#ff5f57;"></span><span style="font-size:13px;font-weight:600;">Notice to Appear</span></div>
+          <div data-chip data-from="420,-220,14" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#febc2e;"></span><span style="font-size:13px;font-weight:600;">Hospital bill — $14,228</span></div>
+          <div data-chip data-from="-480,40,10" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#5b8cff;"></span><span style="font-size:13px;font-weight:600;">Eviction notice</span></div>
+          <div data-chip data-from="470,80,-12" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#a06bff;"></span><span style="font-size:13px;font-weight:600;">FAFSA verification</span></div>
+          <div data-chip data-from="-380,260,18" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#ff5f57;"></span><span style="font-size:13px;font-weight:600;">Denial of benefits</span></div>
+          <div data-chip data-from="400,300,-15" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#7aa2ff;"></span><span style="font-size:13px;font-weight:600;">Final warning — HR</span></div>
+          <div data-chip data-from="-300,-300,-20" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#febc2e;"></span><span style="font-size:13px;font-weight:600;">Appeal deadline: 30d</span></div>
+          <div data-chip data-from="330,-340,16" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#a06bff;"></span><span style="font-size:13px;font-weight:600;">Form I-589, 12 pages</span></div>
+        </div>
+        <div data-clarity-tag style="position:absolute;left:50%;bottom:-58px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:9px;padding:9px 16px;border-radius:999px;background:linear-gradient(135deg,rgba(91,140,255,.16),rgba(160,107,255,.16));border:1px solid rgba(123,140,255,.4);font-size:13px;font-weight:600;color:#cdd6ff;opacity:0;white-space:nowrap;"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 10px var(--a);"></span>Organized by Beacon Atlas</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TRANSFORMATION (pinned) ================= -->
+  <section id="sec-platform" data-scene="transform" style="position:relative;height:300vh;">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:118px 24px 40px;box-sizing:border-box;">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:600px;background:radial-gradient(ellipse,rgba(91,140,255,.12),transparent 70%);pointer-events:none;"></div>
+      <div style="position:relative;z-index:2;text-align:center;margin-bottom:44px;">
+        <div style="display:inline-flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;"><span style="width:34px;height:1px;background:linear-gradient(90deg,var(--a),transparent);"></span>The transformation</div>
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(30px,4.4vw,56px);line-height:1.05;letter-spacing:-.02em;margin:0;">One document in. A plan out.</h2>
+      </div>
+
+      <div style="position:relative;z-index:2;display:flex;align-items:center;gap:clamp(24px,5vw,90px);width:100%;max-width:1080px;justify-content:center;">
+        <!-- doc -->
+        <div data-tdoc style="flex:0 0 auto;width:clamp(200px,24vw,280px);border-radius:16px;border:1px solid var(--border);background:linear-gradient(180deg,#13151f,#0b0d15);padding:22px 20px;box-shadow:0 40px 90px -40px rgba(0,0,0,.9);will-change:transform;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;margin-bottom:12px;">Input</div>
+          <div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;margin-bottom:14px;">Medical discharge summary</div>
+          <div style="height:6px;width:90%;border-radius:4px;background:rgba(255,255,255,.08);margin-bottom:8px;"></div>
+          <div style="height:6px;width:78%;border-radius:4px;background:rgba(255,255,255,.07);margin-bottom:8px;"></div>
+          <div style="height:6px;width:94%;border-radius:4px;background:rgba(255,255,255,.06);margin-bottom:8px;"></div>
+          <div style="height:6px;width:70%;border-radius:4px;background:rgba(255,255,255,.06);margin-bottom:8px;"></div>
+          <div style="height:6px;width:86%;border-radius:4px;background:rgba(255,255,255,.06);"></div>
+        </div>
+        <!-- connector -->
+        <div data-tconn style="flex:0 0 auto;display:flex;align-items:center;opacity:0;">
+          <span style="width:64px;height:2px;background:linear-gradient(90deg,var(--a),var(--b));box-shadow:0 0 12px rgba(123,140,255,.7);"></span>
+        </div>
+        <!-- output cards -->
+        <div style="flex:0 1 560px;display:flex;flex-direction:column;gap:11px;">
+          <div data-tcard style="opacity:0;transform:translateX(40px);will-change:transform,opacity;display:flex;gap:16px;align-items:flex-start;padding:15px 18px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:13px;color:var(--a);font-weight:500;">01</span><div><div style="font-size:14.5px;font-weight:600;">What matters</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px;">You were discharged with 3 follow-up actions and a prescription that needs refilling.</div></div></div>
+          <div data-tcard style="opacity:0;transform:translateX(40px);will-change:transform,opacity;display:flex;gap:16px;align-items:flex-start;padding:15px 18px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:13px;color:var(--a);font-weight:500;">02</span><div><div style="font-size:14.5px;font-weight:600;">What happens if ignored</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px;">Skipping the cardiology follow-up within 14 days risks readmission.</div></div></div>
+          <div data-tcard style="opacity:0;transform:translateX(40px);will-change:transform,opacity;display:flex;gap:16px;align-items:flex-start;padding:15px 18px;border-radius:13px;background:rgba(91,140,255,.08);border:1px solid rgba(123,140,255,.3);"><span style="font-family:'IBM Plex Mono';font-size:13px;color:var(--a);font-weight:500;">03</span><div><div style="font-size:14.5px;font-weight:600;">What to do next</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px;">Book cardiology by Apr 2 · refill metoprolol · submit insurance claim form.</div></div></div>
+          <div data-tcard style="opacity:0;transform:translateX(40px);will-change:transform,opacity;display:flex;gap:16px;align-items:flex-start;padding:15px 18px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:13px;color:var(--a);font-weight:500;">04</span><div><div style="font-size:14.5px;font-weight:600;">Who can help</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px;">Your insurer's nurse line + a patient-advocate org that disputes billing errors.</div></div></div>
+          <div data-tcard style="opacity:0;transform:translateX(40px);will-change:transform,opacity;display:flex;gap:16px;align-items:flex-start;padding:15px 18px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border);"><span style="font-family:'IBM Plex Mono';font-size:13px;color:var(--a);font-weight:500;">05</span><div><div style="font-size:14.5px;font-weight:600;">Your checklist</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px;">5 tasks with dates, added to your timeline and synced to reminders.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PIPELINES (pinned horizontal) ================= -->
+  <section id="sec-pipelines" data-scene="pipelines" style="position:relative;height:420vh;">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;padding-top:104px;box-sizing:border-box;">
+      <div style="padding:0 max(40px,calc((100vw - 1180px)/2));margin-bottom:24px;">
+        <div style="display:inline-flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;"><span style="width:34px;height:1px;background:linear-gradient(90deg,var(--a),transparent);"></span>Specialized crisis pipelines</div>
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(28px,3.8vw,48px);line-height:1.06;letter-spacing:-.02em;margin:0;max-width:20ch;">Tuned for the moments that matter most.</h2>
+        <div style="margin-top:18px;width:min(420px,60vw);height:2px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;"><div data-pipe-progress style="height:100%;width:14%;background:linear-gradient(90deg,var(--a),var(--b));border-radius:2px;"></div></div>
+      </div>
+      <div data-pipe-track style="display:flex;gap:24px;padding:0 max(40px,calc((100vw - 1180px)/2));will-change:transform;">
+        <!-- panel template -->
+        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">01 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#7aa2ff);"></span></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Immigration</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Refugee, asylum, and visa paperwork — translated into rights, dates, and the exact forms that come next.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Hearing date &amp; court location</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Your rights at this stage</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Missing forms &amp; filing windows</div>
+          </div>
+        </div>
+        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">02 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#a06bff,#c08bff);"></span></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Medical</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Discharge summaries, insurance denials, and bills — turned into follow-ups, deadlines, and dispute paths.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Follow-up appointments</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Billing errors to dispute</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Appeal windows for denials</div>
+          </div>
+        </div>
+        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">03 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#a06bff);"></span></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">School</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Financial aid, enrollment, and verification paperwork — decoded into what your family needs to submit, and when.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Aid deadlines &amp; documents</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Verification requests</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Amounts &amp; conditions</div>
+          </div>
+        </div>
+        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">04 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#7aa2ff,#a06bff);"></span></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Legal</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Notices, summons, and disputes — clarified into your rights, response deadlines, and how to find representation.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Response deadline</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>What you're being asked</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Free legal-aid options</div>
+          </div>
+        </div>
+        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">05 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#7aa2ff);"></span></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Financial assistance</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Benefits letters and assistance programs — turned into eligibility, required proof, and appeal routes.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Eligibility &amp; amounts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Proof you must submit</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>How to appeal a denial</div>
+          </div>
+        </div>
+        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">06 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#a06bff,#c08bff);"></span></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Housing</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Eviction notices, lease disputes, and housing aid — translated into your rights, timelines, and next steps.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Notice period &amp; deadlines</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Tenant rights in your area</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Emergency assistance</div>
+          </div>
+        </div>
+        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">07 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#a06bff);"></span></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Employment</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">HR letters, warnings, and benefits documents — decoded into what's being asked and how to respond in time.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Response deadlines</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Your rights &amp; options</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Benefits you may be owed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PRIVACY ================= -->
+  <section id="sec-security" style="position:relative;padding:160px 32px;">
+    <div style="max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;">
+      <div>
+        <div data-reveal style="opacity:0;transform:translateY(28px);transition:.3s cubic-bezier(.2,.7,.2,1);display:inline-flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:22px;"><span style="width:34px;height:1px;background:linear-gradient(90deg,var(--a),transparent);"></span>Privacy &amp; security</div>
+        <h2 data-reveal data-reveal-delay="80" style="opacity:0;transform:translateY(28px);transition:.3s cubic-bezier(.2,.7,.2,1);font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(30px,3.6vw,46px);line-height:1.08;letter-spacing:-.02em;margin:0;">Built for your most sensitive documents.</h2>
+        <p data-reveal data-reveal-delay="140" style="opacity:0;transform:translateY(28px);transition:.3s cubic-bezier(.2,.7,.2,1);font-size:17px;color:var(--muted);line-height:1.6;margin:22px 0 34px;max-width:48ch;">These are the documents you'd never paste into a chatbot. Beacon Atlas is engineered for exactly that level of trust.</p>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-reveal data-reveal-delay="180" style="opacity:0;transform:translateY(24px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;gap:14px;align-items:flex-start;"><span style="margin-top:4px;width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,var(--a),var(--b));flex:0 0 auto;"></span><div><div style="font-weight:600;font-size:15.5px;">End-to-end encryption</div><div style="font-size:13.5px;color:var(--muted);margin-top:2px;">Documents are encrypted in transit and at rest. Only you hold the keys to your case.</div></div></div>
+          <div data-reveal data-reveal-delay="230" style="opacity:0;transform:translateY(24px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;gap:14px;align-items:flex-start;"><span style="margin-top:4px;width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,var(--a),var(--b));flex:0 0 auto;"></span><div><div style="font-weight:600;font-size:15.5px;">Isolated processing</div><div style="font-size:13.5px;color:var(--muted);margin-top:2px;">Each case runs in a sandbox. Nothing is pooled, shared, or used to train models.</div></div></div>
+          <div data-reveal data-reveal-delay="280" style="opacity:0;transform:translateY(24px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;gap:14px;align-items:flex-start;"><span style="margin-top:4px;width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,var(--a),var(--b));flex:0 0 auto;"></span><div><div style="font-weight:600;font-size:15.5px;">Deletion on demand</div><div style="font-size:13.5px;color:var(--muted);margin-top:2px;">Erase any document or your entire history at any moment — permanently.</div></div></div>
+        </div>
+      </div>
+      <div data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(34px);transition:.3s cubic-bezier(.2,.7,.2,1);position:relative;display:flex;align-items:center;justify-content:center;height:420px;">
+        <div style="position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(91,140,255,.18),transparent 65%);"></div>
+        <div style="position:absolute;width:340px;height:340px;border-radius:50%;border:1px solid rgba(255,255,255,.07);animation:ba-pulse 5s ease-in-out infinite;"></div>
+        <div style="position:absolute;width:240px;height:240px;border-radius:50%;border:1px solid rgba(255,255,255,.09);animation:ba-pulse 5s ease-in-out infinite .6s;"></div>
+        <div style="position:relative;width:128px;height:128px;border-radius:30px;background:linear-gradient(150deg,rgba(91,140,255,.22),rgba(160,107,255,.22));border:1px solid rgba(123,140,255,.4);display:flex;align-items:center;justify-content:center;box-shadow:0 30px 80px -30px rgba(123,140,255,.7);">
+          <div style="width:46px;height:38px;border-radius:8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(205,214,255,.8);position:relative;margin-top:14px;"></div>
+          <div style="position:absolute;top:38px;width:30px;height:34px;border-radius:16px 16px 0 0;border:3px solid rgba(205,214,255,.8);border-bottom:0;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GLOBAL (pinned) ================= -->
+  <section id="sec-global" data-scene="global" style="position:relative;height:260vh;background:linear-gradient(180deg,transparent,rgba(91,140,255,.04),transparent);">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:40px;padding:96px max(40px,calc((100vw - 1180px)/2)) 40px;box-sizing:border-box;">
+      <div data-global-text style="position:relative;z-index:3;opacity:0;transform:translateY(28px);">
+        <div style="display:inline-flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:22px;"><span style="width:34px;height:1px;background:linear-gradient(90deg,var(--a),transparent);"></span>Global reach</div>
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(30px,3.8vw,52px);line-height:1.06;letter-spacing:-.02em;margin:0;">Clarity that crosses borders.</h2>
+        <p style="font-size:17px;color:var(--muted);line-height:1.6;margin:22px 0 32px;max-width:46ch;">Crises don't respect borders or languages. Beacon Atlas reads documents in dozens of languages and maps them to local rights and resources — wherever life happens.</p>
+        <div data-global-stats style="display:flex;gap:36px;opacity:0;transform:translateY(20px);">
+          <div><div style="font-family:'Archivo',sans-serif;font-weight:700;font-size:32px;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent;">40+</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">Languages</div></div>
+          <div><div style="font-family:'Archivo',sans-serif;font-weight:700;font-size:32px;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent;">7</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">Crisis pipelines</div></div>
+          <div><div style="font-family:'Archivo',sans-serif;font-weight:700;font-size:32px;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent;">24/7</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">Always on</div></div>
+        </div>
+      </div>
+      <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:center;height:100%;">
+        <div style="position:absolute;width:560px;height:560px;max-width:90vw;max-height:90vw;border-radius:50%;background:radial-gradient(circle,rgba(91,140,255,.16),transparent 62%);"></div>
+        <canvas ref="{{ globeRef }}" style="position:relative;width:min(560px,46vw);height:min(560px,46vw);"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TOOLS ================= -->
+  <section style="position:relative;padding:150px 32px;">
+    <div style="max-width:1180px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:60px;">
+        <div data-reveal style="opacity:0;transform:translateY(24px);transition:.3s cubic-bezier(.2,.7,.2,1);display:inline-flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;"><span style="width:34px;height:1px;background:linear-gradient(90deg,var(--a),transparent);"></span>Connected tools</div>
+        <h2 data-reveal data-reveal-delay="80" style="opacity:0;transform:translateY(24px);transition:.3s cubic-bezier(.2,.7,.2,1);font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(28px,3.6vw,48px);line-height:1.08;letter-spacing:-.02em;margin:0 auto;max-width:22ch;">Wherever the document arrives, Beacon Atlas is already there.</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px;">
+        <div data-reveal style="opacity:0;transform:translateY(30px);transition:.3s cubic-bezier(.2,.7,.2,1);border-radius:20px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.7),rgba(9,11,19,.7));padding:30px 28px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(91,140,255,.12);border:1px solid rgba(123,140,255,.3);display:flex;align-items:center;justify-content:center;margin-bottom:22px;"><div style="width:20px;height:14px;border:1.5px solid var(--a);border-radius:3px;position:relative;overflow:hidden;"><div style="position:absolute;top:-1px;left:-1px;width:22px;height:11px;border-bottom:1.5px solid var(--a);transform:rotate(0);"></div></div></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:20px;margin:0 0 8px;">Gmail Reader</h3>
+          <p style="font-size:14px;color:var(--muted);line-height:1.55;margin:0;">Connect your inbox and Beacon Atlas surfaces the crisis-related emails hiding in the noise — flagged, summarized, and ready to act on.</p>
+        </div>
+        <div data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(30px);transition:.3s cubic-bezier(.2,.7,.2,1);border-radius:20px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.7),rgba(9,11,19,.7));padding:30px 28px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(160,107,255,.12);border:1px solid rgba(160,107,255,.3);display:flex;align-items:center;justify-content:center;margin-bottom:22px;"><div style="width:20px;height:20px;border:1.5px solid var(--b);border-radius:50%;"></div></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:20px;margin:0 0 8px;">Browser extension</h3>
+          <p style="font-size:14px;color:var(--muted);line-height:1.55;margin:0;">Reading a notice in a portal or your email? The extension reads the page and shows the important takeaways right beside it.</p>
+        </div>
+        <div data-reveal data-reveal-delay="240" style="opacity:0;transform:translateY(30px);transition:.3s cubic-bezier(.2,.7,.2,1);border-radius:20px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.7),rgba(9,11,19,.7));padding:30px 28px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(123,140,255,.12);border:1px solid rgba(123,140,255,.3);display:flex;align-items:center;justify-content:center;margin-bottom:22px;"><div style="width:20px;height:16px;border:1.5px solid #7aa2ff;border-radius:6px 6px 6px 2px;"></div></div>
+          <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:20px;margin:0 0 8px;">Interactive chat</h3>
+          <p style="font-size:14px;color:var(--muted);line-height:1.55;margin:0;">Still unsure? Ask follow-up questions in plain language — "What if I miss this date?" — and get grounded, document-specific answers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MISSION (pinned word reveal) ================= -->
+  <section data-scene="mission" style="position:relative;height:200vh;">
+    <div style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:104px 24px 40px;text-align:center;overflow:hidden;box-sizing:border-box;">
+      <div style="position:absolute;width:800px;height:800px;max-width:120vw;border-radius:50%;background:radial-gradient(circle,rgba(160,107,255,.10),transparent 60%);"></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--faint);margin-bottom:34px;position:relative;z-index:2;">Our mission</div>
+      <p data-mission style="position:relative;z-index:2;font-family:'Archivo',sans-serif;font-weight:500;font-size:clamp(28px,4.6vw,60px);line-height:1.18;letter-spacing:-.02em;max-width:18ch;margin:0;color:#fff;">
+        <span data-word style="opacity:.12;transition:opacity .2s;display:inline-block;">No</span> <span data-word style="opacity:.12;display:inline-block;">one</span> <span data-word style="opacity:.12;display:inline-block;">should</span> <span data-word style="opacity:.12;display:inline-block;">miss</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">help,</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">rights,</span> <span data-word style="opacity:.12;display:inline-block;">or</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">deadlines</span> <span data-word style="opacity:.12;display:inline-block;">because</span> <span data-word style="opacity:.12;display:inline-block;">the</span> <span data-word style="opacity:.12;display:inline-block;">paperwork</span> <span data-word style="opacity:.12;display:inline-block;">was</span> <span data-word style="opacity:.12;display:inline-block;">too</span> <span data-word style="opacity:.12;display:inline-block;">hard</span> <span data-word style="opacity:.12;display:inline-block;">to</span> <span data-word style="opacity:.12;display:inline-block;">read.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= FINAL CTA ================= -->
+  <section style="position:relative;padding:160px 32px 0;overflow:hidden;">
+    <div style="position:absolute;bottom:-30%;left:50%;transform:translateX(-50%);width:1000px;height:800px;background:radial-gradient(circle at 50% 80%,rgba(91,140,255,.24),rgba(160,107,255,.10) 40%,transparent 66%);pointer-events:none;"></div>
+    <div style="position:relative;z-index:2;max-width:840px;margin:0 auto;text-align:center;">
+      <h2 data-reveal style="opacity:0;transform:translateY(30px);transition:.3s cubic-bezier(.2,.7,.2,1);font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(34px,5.4vw,74px);line-height:1.04;letter-spacing:-.025em;margin:0;text-wrap:balance;">Life doesn't pause for paperwork.</h2>
+      <p data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(30px);transition:.3s cubic-bezier(.2,.7,.2,1);font-size:clamp(17px,1.8vw,22px);color:var(--muted);line-height:1.5;margin:24px auto 0;max-width:42ch;">Beacon Atlas helps you understand what's in front of you — and act in time.</p>
+      <div data-reveal data-reveal-delay="220" style="opacity:0;transform:translateY(30px);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;gap:14px;justify-content:center;margin-top:40px;flex-wrap:wrap;">
+        <button style="font-family:'Archivo',sans-serif;font-weight:600;font-size:16px;color:#fff;border:0;border-radius:999px;padding:16px 34px;cursor:pointer;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 16px 44px -12px rgba(123,140,255,.8);">Get started</button>
+        <button style="font-family:'Archivo',sans-serif;font-weight:600;font-size:16px;color:var(--text);border:1px solid var(--border);border-radius:999px;padding:16px 32px;cursor:pointer;background:rgba(255,255,255,.03);">Request a demo</button>
+      </div>
+    </div>
+    <!-- footer -->
+    <div style="position:relative;z-index:2;max-width:1180px;margin:140px auto 0;padding:36px 0;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+      <div style="display:flex;align-items:center;gap:11px;">
+        <div style="position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><div style="position:absolute;width:22px;height:22px;border-radius:50%;border:1px solid rgba(123,140,255,.4);"></div><div style="width:6px;height:6px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));"></div></div>
+        <span style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;">Beacon Atlas</span>
+      </div>
+      <div style="font-size:13px;color:var(--faint);">Secure, privacy-first AI for high-stakes documents.</div>
+      <div style="display:flex;gap:26px;font-size:13px;color:var(--muted);"><span style="cursor:pointer;">Privacy</span><span style="cursor:pointer;">Security</span><span style="cursor:pointer;">Contact</span></div>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;headline&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Understand any document. Act in time.&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;accentStart&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#5b8cff&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;accentEnd&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#a06bff&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;reduceMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  rootRef = React.createRef();
+  globeRef = React.createRef();
+  auroraRef = React.createRef();
+
+  renderVals() {
+    return {
+      rootRef: this.rootRef,
+      globeRef: this.globeRef,
+      auroraRef: this.auroraRef,
+      headline: this.props.headline ?? "Understand any document. Act in time.",
+    };
+  }
+
+  componentDidMount() {
+    const root = this.rootRef.current;
+    if (!root) return;
+    if (this.props.accentStart) root.style.setProperty('--a', this.props.accentStart);
+    if (this.props.accentEnd) root.style.setProperty('--b', this.props.accentEnd);
+    this.reduce = !!this.props.reduceMotion || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    // reveal on scroll (rAF-driven; IO initial callback is unreliable here)
+    this.pendingReveals = [...root.querySelectorAll('[data-reveal]')];
+
+    // caches
+    this.nav = root.querySelector('[data-nav]');
+    this.parallaxEls = [...root.querySelectorAll('[data-parallax]')];
+    this.scenes = [...root.querySelectorAll('[data-scene]')];
+    this.cache = {
+      chips: [...root.querySelectorAll('[data-chip]')],
+      clarityPanel: root.querySelector('[data-clarity-panel]'),
+      clarityTag: root.querySelector('[data-clarity-tag]'),
+      tdoc: root.querySelector('[data-tdoc]'),
+      tconn: root.querySelector('[data-tconn]'),
+      tcards: [...root.querySelectorAll('[data-tcard]')],
+      pipeTrack: root.querySelector('[data-pipe-track]'),
+      pipeProgress: root.querySelector('[data-pipe-progress]'),
+      globalText: root.querySelector('[data-global-text]'),
+      globalStats: root.querySelector('[data-global-stats]'),
+      words: [...root.querySelectorAll('[data-word]')],
+    };
+
+    this.globe = this.initGlobe();
+    this.aurora = this.initAurora();
+
+    // nav links -> scroll to matching section
+    this._onNavClick = (e) => {
+      const target = root.querySelector('#' + e.currentTarget.getAttribute('data-jump'));
+      if (!target) return;
+      e.preventDefault();
+      const navH = this.nav ? this.nav.getBoundingClientRect().height : 72;
+      const destY = Math.max(0, window.scrollY + target.getBoundingClientRect().top - navH - 12);
+      this.smoothScrollTo(destY);
+    };
+    root.querySelectorAll('[data-jump]').forEach(a => a.addEventListener('click', this._onNavClick));
+
+    const safeTick = () => {
+      try { this.tick(); } catch (err) { if (!this._warned) { console.warn('tick error', err); this._warned = true; } }
+    };
+    this._safeTick = safeTick;
+
+    if (this.reduce) {
+      root.querySelectorAll('[data-reveal]').forEach(el => { el.style.opacity = '1'; el.style.transform = 'none'; });
+      this.cache.tcards.forEach(c => { c.style.opacity = '1'; c.style.transform = 'none'; });
+      this.cache.words.forEach(w => { w.style.opacity = '1'; });
+      if (this.cache.globalText) { this.cache.globalText.style.opacity = '1'; this.cache.globalText.style.transform = 'none'; }
+      if (this.cache.globalStats) { this.cache.globalStats.style.opacity = '1'; this.cache.globalStats.style.transform = 'none'; }
+      safeTick();
+      return;
+    }
+
+    // Scroll-driven (reliable even when rAF is throttled; fires on programmatic scroll too)
+    this._onScroll = () => safeTick();
+    window.addEventListener('scroll', this._onScroll, { passive: true });
+    window.addEventListener('resize', this._onScroll);
+    // settle passes for fonts/layout
+    safeTick();
+    [60, 200, 500, 1000].forEach(d => setTimeout(safeTick, d));
+  }
+
+  componentWillUnmount() {
+    if (this._onScroll) {
+      window.removeEventListener('scroll', this._onScroll);
+      window.removeEventListener('resize', this._onScroll);
+    }
+    if (this.globe && this.globe.stop) this.globe.stop();
+    if (this.aurora && this.aurora.stop) this.aurora.stop();
+  }
+
+  initAurora() {
+    const cv = this.auroraRef.current;
+    if (!cv) return null;
+    const gl = cv.getContext('webgl', { antialias: false, alpha: false }) || cv.getContext('experimental-webgl');
+    if (!gl) return null;
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    let W = 0, H = 0, running = true, raf = 0;
+    const start = performance.now();
+    const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
+    const MAX = 8;
+    const clicks = [];
+
+    const vsrc = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+    const fsrc = "precision highp float;\nuniform vec2 uRes; uniform float uTime; uniform vec2 uMouse;\nuniform vec2 uClicks[8]; uniform float uLife[8]; uniform int uN;\nfloat hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }\nfloat noise(vec2 p){ vec2 i=floor(p),f=fract(p); float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.)); vec2 u=f*f*(3.-2.*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }\nfloat fbm(vec2 p){ float v=0.,a=.5; for(int i=0;i<6;i++){ v+=a*noise(p); p=p*2.02; a*=.5; } return v; }\nvoid main(){\n  vec2 uv = gl_FragCoord.xy/uRes.xy;\n  float asp = uRes.x/uRes.y;\n  vec2 auv = vec2(uv.x*asp, uv.y);\n  vec2 am = vec2(uMouse.x*asp, uMouse.y);\n  float t = uTime*0.12;\n  vec2 p = auv*2.2;\n  p += (am - auv)*0.30*exp(-distance(auv,am)*1.4);\n  vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2,1.3) - t*0.8));\n  vec2 r = vec2(fbm(p + 2.0*q + vec2(1.7,9.2) + t*0.6), fbm(p + 2.0*q + vec2(8.3,2.8) - t*0.5));\n  float f = clamp(fbm(p + 2.2*r),0.0,1.0);\n  vec3 deep = vec3(0.015,0.035,0.075);\n  vec3 mid  = vec3(0.04,0.20,0.46);\n  vec3 hi   = vec3(0.22,0.58,0.96);\n  vec3 col = mix(deep, mid, smoothstep(0.25,0.6,f));\n  col = mix(col, hi, smoothstep(0.5,0.92,f*f));\n  float dm = distance(auv, am);\n  col += hi*0.20*exp(-dm*2.0)*(0.6+0.4*f);\n  float vig = smoothstep(1.18,0.32,distance(uv,vec2(0.5)));\n  col *= mix(0.42,1.0,vig);\n  for(int i=0;i<8;i++){\n    if(i>=uN) break;\n    vec2 cp = vec2(uClicks[i].x*asp, uClicks[i].y);\n    float life = uLife[i];\n    float dd = distance(auv, cp);\n    float grow = 1.0-life;\n    float rad = mix(7.5, 2.3, grow);\n    float nz = fbm(auv*7.0 + uTime*0.45 + float(i)*4.0);\n    float amt = exp(-dd*rad)*(0.45+0.85*nz)*life*life;\n    vec3 redc = mix(vec3(1.0,0.12,0.22), vec3(1.0,0.6,0.25), nz*0.7);\n    col += redc*amt*1.7;\n  }\n  col = pow(col, vec3(0.92));\n  gl_FragColor = vec4(col,1.0);\n}";
+
+    const compile = (type, src) => { const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) console.warn('aurora shader', gl.getShaderInfoLog(sh)); return sh; };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsrc));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsrc));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const U = (n) => gl.getUniformLocation(prog, n);
+    const uRes = U('uRes'), uTime = U('uTime'), uMouse = U('uMouse'), uClicks = U('uClicks[0]') || U('uClicks'), uLife = U('uLife[0]') || U('uLife'), uN = U('uN');
+
+    const resize = () => {
+      W = cv.clientWidth || window.innerWidth; H = cv.clientHeight || window.innerHeight;
+      cv.width = Math.max(1, Math.round(W * dpr)); cv.height = Math.max(1, Math.round(H * dpr));
+      gl.viewport(0, 0, cv.width, cv.height);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const onMove = (e) => {
+      const rc = cv.getBoundingClientRect();
+      if (rc.width && rc.height) { mouse.tx = (e.clientX - rc.left) / rc.width; mouse.ty = 1 - (e.clientY - rc.top) / rc.height; }
+    };
+    const onDown = (e) => {
+      if (e.target && e.target.closest && e.target.closest('a,button,nav,[data-nav]')) return;
+      const rc = cv.getBoundingClientRect();
+      if (!rc.width) return;
+      const x = (e.clientX - rc.left) / rc.width, y = 1 - (e.clientY - rc.top) / rc.height;
+      if (x < 0 || x > 1 || y < 0 || y > 1) return;
+      clicks.push({ x, y, t0: performance.now() });
+      if (clicks.length > MAX) clicks.shift();
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerdown', onDown, { passive: true });
+
+    const LIFE = 2800;
+    const arr = new Float32Array(MAX * 2);
+    const lifeArr = new Float32Array(MAX);
+
+    const draw = () => {
+      if (!running) return;
+      mouse.x += (mouse.tx - mouse.x) * 0.05; mouse.y += (mouse.ty - mouse.y) * 0.05;
+      const now = performance.now();
+      for (let i = clicks.length - 1; i >= 0; i--) { if (now - clicks[i].t0 > LIFE) clicks.splice(i, 1); }
+      const n = Math.min(MAX, clicks.length);
+      for (let i = 0; i < n; i++) { arr[i*2] = clicks[i].x; arr[i*2+1] = clicks[i].y; lifeArr[i] = 1 - (now - clicks[i].t0) / LIFE; }
+      gl.uniform2f(uRes, cv.width, cv.height);
+      gl.uniform1f(uTime, (now - start) / 1000);
+      gl.uniform2f(uMouse, mouse.x, mouse.y);
+      gl.uniform1i(uN, n);
+      if (n > 0) { gl.uniform2fv(uClicks, arr.subarray(0, n*2)); gl.uniform1fv(uLife, lifeArr.subarray(0, n)); }
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      if (this.reduce) return;
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return { stop: () => { running = false; cancelAnimationFrame(raf); window.removeEventListener('resize', resize); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerdown', onDown); } };
+  }
+
+  smoothScrollTo(destY) {
+    if (this._scrollRaf) cancelAnimationFrame(this._scrollRaf);
+    const startY = window.scrollY || window.pageYOffset;
+    const dist = destY - startY;
+    const dur = Math.min(900, Math.max(360, Math.abs(dist) * 0.5));
+    const t0 = performance.now();
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / dur);
+      window.scrollTo(0, startY + dist * ease(t));
+      if (t < 1) this._scrollRaf = requestAnimationFrame(step);
+    };
+    this._scrollRaf = requestAnimationFrame(step);
+  }
+
+  clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  lerp(a, b, t) { return a + (b - a) * t; }
+
+  tick() {
+    const root = this.rootRef.current;
+    if (!root) return;
+    const vh = window.innerHeight;
+    const sy = window.scrollY || window.pageYOffset;
+
+    // reveal-on-scroll
+    if (this.pendingReveals && this.pendingReveals.length) {
+      const trig = vh * 1.05;
+      this.pendingReveals = this.pendingReveals.filter(el => {
+        if (el.getBoundingClientRect().top < trig) {
+          el.style.transitionDelay = (el.getAttribute('data-reveal-delay') || 0) + 'ms';
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+          return false;
+        }
+        return true;
+      });
+    }
+
+    if (this.nav) {
+      if (sy > 30) {
+        this.nav.style.background = 'rgba(6,7,14,.72)';
+        this.nav.style.backdropFilter = 'blur(14px)';
+        this.nav.style.borderBottomColor = 'rgba(255,255,255,.07)';
+      } else {
+        this.nav.style.background = 'transparent';
+        this.nav.style.backdropFilter = 'none';
+        this.nav.style.borderBottomColor = 'transparent';
+      }
+    }
+
+    if (!this.reduce) {
+      this.parallaxEls.forEach(el => {
+        const sp = parseFloat(el.getAttribute('data-parallax'));
+        const base = el.style.transform.includes('translateX(-50%)') ? 'translateX(-50%) ' : '';
+        el.style.transform = base + `translate3d(0,${-(sy) * sp}px,0)`;
+      });
+    }
+
+    this.scenes.forEach(sc => {
+      const r = sc.getBoundingClientRect();
+      const total = r.height - vh;
+      let p = total > 0 ? (-r.top) / total : 0;
+      p = this.clamp(p, 0, 1);
+      const fn = this['scene_' + sc.getAttribute('data-scene')];
+      if (fn) fn.call(this, p);
+    });
+  }
+
+  scene_problem(p) {
+    const e = 1 - Math.pow(1 - this.clamp(p / 0.8, 0, 1), 3);
+    this.cache.chips.forEach(ch => {
+      const f = (ch.getAttribute('data-from') || '0,0,0').split(',').map(Number);
+      const k = 1 - e;
+      ch.style.transform = `translate(${f[0] * k}px,${f[1] * k}px) rotate(${f[2] * k}deg) scale(${this.lerp(0.92, 1, e)})`;
+    });
+    if (this.cache.clarityPanel) this.cache.clarityPanel.style.opacity = this.clamp((e - 0.4) / 0.5, 0, 1) * 0.9;
+    if (this.cache.clarityTag) {
+      const t = this.clamp((e - 0.6) / 0.4, 0, 1);
+      this.cache.clarityTag.style.opacity = t;
+      this.cache.clarityTag.style.transform = `translateX(-50%) translateY(${(1 - t) * 12}px)`;
+    }
+  }
+
+  scene_transform(p) {
+    const slide = this.clamp(p / 0.22, 0, 1);
+    if (this.cache.tdoc) this.cache.tdoc.style.transform = `translateX(${this.lerp(120, 0, slide)}px)`;
+    if (this.cache.tconn) this.cache.tconn.style.opacity = this.clamp((p - 0.18) / 0.12, 0, 1);
+    this.cache.tcards.forEach((c, i) => {
+      const start = 0.3 + i * 0.125;
+      const local = this.clamp((p - start) / 0.14, 0, 1);
+      const e = 1 - Math.pow(1 - local, 3);
+      c.style.opacity = e;
+      c.style.transform = `translateX(${(1 - e) * 40}px)`;
+    });
+  }
+
+  scene_pipelines(p) {
+    const track = this.cache.pipeTrack;
+    if (!track) return;
+    const max = track.scrollWidth - window.innerWidth + 40;
+    const eased = this.clamp(p, 0, 1);
+    track.style.transform = `translateX(${-Math.max(0, max) * eased}px)`;
+    if (this.cache.pipeProgress) this.cache.pipeProgress.style.width = (14 + eased * 86) + '%';
+  }
+
+  scene_global(p) {
+    if (this.cache.globalText) {
+      const t = this.clamp(p / 0.35, 0, 1);
+      this.cache.globalText.style.opacity = t;
+      this.cache.globalText.style.transform = `translateY(${(1 - t) * 28}px)`;
+    }
+    if (this.cache.globalStats) {
+      const t = this.clamp((p - 0.3) / 0.3, 0, 1);
+      this.cache.globalStats.style.opacity = t;
+      this.cache.globalStats.style.transform = `translateY(${(1 - t) * 20}px)`;
+    }
+  }
+
+  scene_mission(p) {
+    const words = this.cache.words;
+    const N = words.length;
+    words.forEach((w, i) => {
+      const start = (i / N) * 0.62;
+      const local = this.clamp((p - start) / 0.16, 0, 1);
+      w.style.opacity = (0.12 + 0.88 * local).toFixed(3);
+      w.style.transform = `translateY(${(1 - local) * 10}px)`;
+    });
+  }
+
+  hexRgba(hex, a) {
+    hex = (hex || '').trim().replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const n = parseInt(hex || '5b8cff', 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+
+  initGlobe() {
+    const cv = this.globeRef.current;
+    if (!cv) return null;
+    const ctx = cv.getContext('2d');
+    const css = getComputedStyle(this.rootRef.current);
+    const A = (css.getPropertyValue('--a') || '#5b8cff').trim();
+    const B = (css.getPropertyValue('--b') || '#a06bff').trim();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    let running = true, theta = 0.4, tt = 0, raf;
+
+    const resize = () => { const s = cv.clientWidth || 480; cv.width = s * dpr; cv.height = s * dpr; };
+    resize();
+    this._globeResize = resize;
+    window.addEventListener('resize', resize);
+
+    const deg = Math.PI / 180;
+    const nodes = [
+      [40.7, -74], [51.5, -0.1], [19.4, -99.1], [28.6, 77.2], [-23.5, -46.6],
+      [35.7, 139.7], [-33.9, 18.4], [1.3, 103.8], [30, 31.2], [48.8, 2.3], [-1.3, 36.8], [25, 55.3]
+    ].map(n => [n[0] * deg, n[1] * deg]);
+    const arcs = [[0, 1], [0, 4], [1, 8], [3, 7], [5, 9], [2, 0], [6, 10], [8, 3], [11, 5]];
+
+    const vec = (phi, lam) => [Math.cos(phi) * Math.sin(lam), Math.sin(phi), Math.cos(phi) * Math.cos(lam)];
+    const rotY = (v, t) => { const c = Math.cos(t), s = Math.sin(t); return [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c]; };
+
+    const draw = () => {
+      if (!running) return;
+      const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.42;
+      ctx.clearRect(0, 0, W, H);
+      ctx.lineWidth = Math.max(1, dpr * 0.8);
+
+      // parallels & meridians
+      const rings = [];
+      for (let la = -60; la <= 60; la += 30) {
+        const pts = [];
+        for (let k = 0; k <= 72; k++) { const lam = k / 72 * Math.PI * 2; pts.push(rotY(vec(la * deg, lam), theta)); }
+        rings.push(pts);
+      }
+      for (let lo = 0; lo < 180; lo += 30) {
+        const pts = [];
+        for (let k = 0; k <= 48; k++) { const phi = -Math.PI / 2 + k / 48 * Math.PI; pts.push(rotY(vec(phi, lo * deg), theta)); }
+        rings.push(pts);
+      }
+      rings.forEach(pts => {
+        let prevFront = null;
+        for (let i = 0; i < pts.length; i++) {
+          const v = pts[i]; const front = v[2] >= 0;
+          const sx = cx + R * v[0], sy = cy - R * v[1];
+          if (i === 0 || front !== prevFront) {
+            if (i > 0) ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sx, sy);
+            ctx.strokeStyle = front ? this.hexRgba(A, 0.34) : this.hexRgba(A, 0.07);
+          } else ctx.lineTo(sx, sy);
+          prevFront = front;
+        }
+        ctx.stroke();
+      });
+
+      // arcs
+      arcs.forEach((pair, idx) => {
+        const a = vec(nodes[pair[0]][0], nodes[pair[0]][1]);
+        const b = vec(nodes[pair[1]][0], nodes[pair[1]][1]);
+        const dot = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+        const om = Math.acos(dot) || 0.0001;
+        const so = Math.sin(om);
+        ctx.beginPath();
+        let started = false;
+        const STEPS = 40;
+        for (let s = 0; s <= STEPS; s++) {
+          const t = s / STEPS;
+          const w1 = Math.sin((1 - t) * om) / so, w2 = Math.sin(t * om) / so;
+          let v = [a[0] * w1 + b[0] * w2, a[1] * w1 + b[1] * w2, a[2] * w1 + b[2] * w2];
+          const lift = 1 + 0.16 * Math.sin(Math.PI * t);
+          v = rotY([v[0] * lift, v[1] * lift, v[2] * lift], theta);
+          const sx = cx + R * v[0], sy = cy - R * v[1];
+          if (v[2] < -0.1) { started = false; continue; }
+          if (!started) { ctx.moveTo(sx, sy); started = true; } else ctx.lineTo(sx, sy);
+        }
+        ctx.strokeStyle = this.hexRgba(idx % 2 ? B : A, 0.5);
+        ctx.lineWidth = Math.max(1, dpr * 1.1);
+        ctx.stroke();
+
+        // travelling pulse
+        const tp = ((tt * 0.18 + idx * 0.23) % 1);
+        const w1 = Math.sin((1 - tp) * om) / so, w2 = Math.sin(tp * om) / so;
+        let pv = [a[0] * w1 + b[0] * w2, a[1] * w1 + b[1] * w2, a[2] * w1 + b[2] * w2];
+        const lift = 1 + 0.16 * Math.sin(Math.PI * tp);
+        pv = rotY([pv[0] * lift, pv[1] * lift, pv[2] * lift], theta);
+        if (pv[2] >= -0.1) {
+          const sx = cx + R * pv[0], sy = cy - R * pv[1];
+          ctx.beginPath(); ctx.arc(sx, sy, dpr * 2.4, 0, Math.PI * 2);
+          ctx.fillStyle = this.hexRgba(idx % 2 ? B : A, 0.95); ctx.fill();
+        }
+      });
+
+      // nodes
+      nodes.forEach(n => {
+        const v = rotY(vec(n[0], n[1]), theta);
+        if (v[2] < 0) return;
+        const sx = cx + R * v[0], sy = cy - R * v[1];
+        ctx.beginPath(); ctx.arc(sx, sy, dpr * 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = this.hexRgba(B, 0.18); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx, sy, dpr * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#dfe6ff'; ctx.fill();
+      });
+
+      theta += 0.0018; tt += 0.016;
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return { stop: () => { running = false; cancelAnimationFrame(raf); window.removeEventListener('resize', resize); } };
+  }
+}
+</script>
+</body>
+</html>
