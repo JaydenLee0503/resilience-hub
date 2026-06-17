@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
-import beaconSource from '../legacy/Beacon Atlas.dc.html?raw';
+import beaconSource from '../src/Beacon Atlas ver 1.0.1.dc.html?raw';
 
-const HEADLINE = 'When life sends hard documents, Beacon Atlas turns them into clear next steps.';
+// The headline the .dc.html ships with as its default (see data-props in the file).
+const HEADLINE = 'Understand any document. Act in time.';
 
 function buildBeaconTemplate() {
   const style = beaconSource.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '';
@@ -17,7 +18,8 @@ function buildBeaconTemplate() {
   const [, attrs, inner] = root;
   const markup = `<div data-beacon-root${attrs}>${inner}</div>`
     .replaceAll('{{ headline }}', HEADLINE)
-    .replaceAll('ref="{{ globeRef }}"', 'data-globe-canvas=""');
+    .replaceAll('ref="{{ globeRef }}"', 'data-globe-canvas=""')
+    .replaceAll('ref="{{ auroraRef }}"', 'data-aurora-canvas=""');
 
   return { style, markup };
 }
@@ -43,6 +45,156 @@ function installHoverStyles(root) {
       element.removeEventListener('blur', hide);
     };
   });
+}
+
+const hexRgba = (hex, alpha) => {
+  let clean = (hex || '').trim().replace('#', '');
+  if (clean.length === 3) clean = clean.split('').map((char) => char + char).join('');
+  const value = parseInt(clean || '5b8cff', 16);
+  return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})`;
+};
+
+// Animated WebGL aurora behind the hero (ported from the .dc.html DCLogic.initAurora).
+function initAurora(root, reduce) {
+  const canvas = root.querySelector('[data-aurora-canvas]');
+  if (!canvas) return null;
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false })
+    || canvas.getContext('experimental-webgl');
+  if (!gl) return null;
+
+  const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+  let running = true;
+  let raf = 0;
+  const start = performance.now();
+  const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
+  const MAX = 8;
+  const clicks = [];
+
+  const vsrc = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+  const fsrc = "precision highp float;\nuniform vec2 uRes; uniform float uTime; uniform vec2 uMouse;\nuniform vec2 uClicks[8]; uniform float uLife[8]; uniform int uN;\nfloat hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }\nfloat noise(vec2 p){ vec2 i=floor(p),f=fract(p); float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.)); vec2 u=f*f*(3.-2.*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }\nfloat fbm(vec2 p){ float v=0.,a=.5; for(int i=0;i<6;i++){ v+=a*noise(p); p=p*2.02; a*=.5; } return v; }\nvoid main(){\n  vec2 uv = gl_FragCoord.xy/uRes.xy;\n  float asp = uRes.x/uRes.y;\n  vec2 auv = vec2(uv.x*asp, uv.y);\n  vec2 am = vec2(uMouse.x*asp, uMouse.y);\n  float t = uTime*0.12;\n  vec2 p = auv*2.2;\n  p += (am - auv)*0.30*exp(-distance(auv,am)*1.4);\n  vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2,1.3) - t*0.8));\n  vec2 r = vec2(fbm(p + 2.0*q + vec2(1.7,9.2) + t*0.6), fbm(p + 2.0*q + vec2(8.3,2.8) - t*0.5));\n  float f = clamp(fbm(p + 2.2*r),0.0,1.0);\n  vec3 deep = vec3(0.015,0.035,0.075);\n  vec3 mid  = vec3(0.04,0.20,0.46);\n  vec3 hi   = vec3(0.22,0.58,0.96);\n  vec3 col = mix(deep, mid, smoothstep(0.25,0.6,f));\n  col = mix(col, hi, smoothstep(0.5,0.92,f*f));\n  float dm = distance(auv, am);\n  col += hi*0.20*exp(-dm*2.0)*(0.6+0.4*f);\n  float vig = smoothstep(1.18,0.32,distance(uv,vec2(0.5)));\n  col *= mix(0.42,1.0,vig);\n  for(int i=0;i<8;i++){\n    if(i>=uN) break;\n    vec2 cp = vec2(uClicks[i].x*asp, uClicks[i].y);\n    float life = uLife[i];\n    float dd = distance(auv, cp);\n    float grow = 1.0-life;\n    float rad = mix(7.5, 2.3, grow);\n    float nz = fbm(auv*7.0 + uTime*0.45 + float(i)*4.0);\n    float amt = exp(-dd*rad)*(0.45+0.85*nz)*life*life;\n    vec3 redc = mix(vec3(1.0,0.12,0.22), vec3(1.0,0.6,0.25), nz*0.7);\n    col += redc*amt*1.7;\n  }\n  col = pow(col, vec3(0.92));\n  gl_FragColor = vec4(col,1.0);\n}";
+
+  const compile = (type, src) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.warn('aurora shader', gl.getShaderInfoLog(shader));
+    }
+    return shader;
+  };
+
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, vsrc));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fsrc));
+  gl.linkProgram(program);
+  gl.useProgram(program);
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(program, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const U = (name) => gl.getUniformLocation(program, name);
+  const uRes = U('uRes');
+  const uTime = U('uTime');
+  const uMouse = U('uMouse');
+  const uClicks = U('uClicks[0]') || U('uClicks');
+  const uLife = U('uLife[0]') || U('uLife');
+  const uN = U('uN');
+
+  const resize = () => {
+    const width = canvas.clientWidth || window.innerWidth;
+    const height = canvas.clientHeight || window.innerHeight;
+    canvas.width = Math.max(1, Math.round(width * dpr));
+    canvas.height = Math.max(1, Math.round(height * dpr));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  };
+  resize();
+  window.addEventListener('resize', resize);
+
+  const onMove = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      mouse.tx = (event.clientX - rect.left) / rect.width;
+      mouse.ty = 1 - (event.clientY - rect.top) / rect.height;
+    }
+  };
+  const onDown = (event) => {
+    if (event.target?.closest?.('a,button,nav,[data-nav]')) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = 1 - (event.clientY - rect.top) / rect.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+    clicks.push({ x, y, t0: performance.now() });
+    if (clicks.length > MAX) clicks.shift();
+  };
+  window.addEventListener('pointermove', onMove, { passive: true });
+  window.addEventListener('pointerdown', onDown, { passive: true });
+
+  const LIFE = 2800;
+  const positions = new Float32Array(MAX * 2);
+  const lives = new Float32Array(MAX);
+
+  const draw = () => {
+    if (!running) return;
+    mouse.x += (mouse.tx - mouse.x) * 0.05;
+    mouse.y += (mouse.ty - mouse.y) * 0.05;
+    const now = performance.now();
+    for (let i = clicks.length - 1; i >= 0; i -= 1) {
+      if (now - clicks[i].t0 > LIFE) clicks.splice(i, 1);
+    }
+    const count = Math.min(MAX, clicks.length);
+    for (let i = 0; i < count; i += 1) {
+      positions[i * 2] = clicks[i].x;
+      positions[i * 2 + 1] = clicks[i].y;
+      lives[i] = 1 - (now - clicks[i].t0) / LIFE;
+    }
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.uniform1f(uTime, (now - start) / 1000);
+    gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.uniform1i(uN, count);
+    if (count > 0) {
+      gl.uniform2fv(uClicks, positions.subarray(0, count * 2));
+      gl.uniform1fv(uLife, lives.subarray(0, count));
+    }
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    if (reduce) return;
+    raf = requestAnimationFrame(draw);
+  };
+  draw();
+
+  return {
+    stop: () => {
+      running = false;
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerdown', onDown);
+    },
+  };
+}
+
+// Smooth scroll used by the nav links (ported from DCLogic.smoothScrollTo).
+function makeSmoothScroller() {
+  let scrollRaf = 0;
+  return (destY) => {
+    cancelAnimationFrame(scrollRaf);
+    const startY = window.scrollY || window.pageYOffset;
+    const dist = destY - startY;
+    const duration = Math.min(900, Math.max(360, Math.abs(dist) * 0.5));
+    const t0 = performance.now();
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / duration);
+      window.scrollTo(0, startY + dist * ease(t));
+      if (t < 1) scrollRaf = requestAnimationFrame(step);
+    };
+    scrollRaf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(scrollRaf);
+  };
 }
 
 function useBeaconAnimations(hostRef) {
@@ -74,13 +226,6 @@ function useBeaconAnimations(hostRef) {
       globalText: root.querySelector('[data-global-text]'),
       globalStats: root.querySelector('[data-global-stats]'),
       words: [...root.querySelectorAll('[data-word]')],
-    };
-
-    const hexRgba = (hex, alpha) => {
-      let clean = (hex || '').trim().replace('#', '');
-      if (clean.length === 3) clean = clean.split('').map((char) => char + char).join('');
-      const value = parseInt(clean || '5b8cff', 16);
-      return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})`;
     };
 
     const sceneProblem = (progress) => {
@@ -359,6 +504,20 @@ function useBeaconAnimations(hostRef) {
     };
 
     const globe = initGlobe();
+    const aurora = initAurora(root, reduce);
+
+    // Nav links jump to their target section with a smooth scroll.
+    const smoothScrollTo = makeSmoothScroller();
+    const jumpLinks = [...root.querySelectorAll('[data-jump]')];
+    const onJump = (event) => {
+      const target = root.querySelector(`#${event.currentTarget.getAttribute('data-jump')}`);
+      if (!target) return;
+      event.preventDefault();
+      const navHeight = nav ? nav.getBoundingClientRect().height : 72;
+      const destY = Math.max(0, window.scrollY + target.getBoundingClientRect().top - navHeight - 12);
+      smoothScrollTo(destY);
+    };
+    jumpLinks.forEach((link) => link.addEventListener('click', onJump));
 
     const tick = () => {
       const viewportHeight = window.innerHeight;
@@ -445,6 +604,8 @@ function useBeaconAnimations(hostRef) {
 
       return () => {
         globe?.stop();
+        aurora?.stop();
+        jumpLinks.forEach((link) => link.removeEventListener('click', onJump));
         hoverCleanups.forEach((cleanup) => cleanup());
       };
     }
@@ -461,6 +622,8 @@ function useBeaconAnimations(hostRef) {
       window.removeEventListener('resize', onScrollOrResize);
       settleTimers.forEach((timer) => window.clearTimeout(timer));
       globe?.stop();
+      aurora?.stop();
+      jumpLinks.forEach((link) => link.removeEventListener('click', onJump));
       hoverCleanups.forEach((cleanup) => cleanup());
     };
   }, [hostRef]);
