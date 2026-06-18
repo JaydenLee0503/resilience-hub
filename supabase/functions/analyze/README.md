@@ -1,23 +1,24 @@
 # `analyze` Edge Function
 
-Server-side proxy for the Simplifier. Holds `ANTHROPIC_API_KEY` so it never ships
-to the browser. Receives Guardian-tokenized text, calls the model, returns the
-raw assistant text for the client to parse.
+Server-side proxy for the Simplifier. Holds `FEATHERLESS_API_KEY` so it never
+ships to the browser. Receives Guardian-tokenized text, classifies it, runs the
+matching pipeline prompt, and returns the **parsed canonical schema object**
+(CLAUDE.md §10) — the same contract as `server/dev.js`.
 
 ## Request / response
 
 ```
 POST /functions/v1/analyze
-Body: { "tokenizedText": "<text with PII already replaced by tokens>" }
+Body: { "tokenizedText": "<tokenized text>", "pipelineType"?: "<override>" }
 
-200 { "text": "<model output, JSON as a string>" }
+200 { "pipeline_type": "...", "urgency": "...", "plain_language_summary": "...", ... }
 4xx/5xx { "error": "...", "detail"?: "..." }
 ```
 
 ## Prerequisites
 
 - [Supabase CLI](https://supabase.com/docs/guides/cli) installed.
-- An Anthropic API key.
+- A Featherless API key.
 
 > Note: Supabase project + Auth are **not** configured yet. For now run this
 > function locally with JWT verification off.
@@ -31,14 +32,18 @@ supabase start         # optional: full local stack (db, etc.)
 
 # 2. Put your key in supabase/functions/.env (gitignored):
 cp supabase/functions/.env.example supabase/functions/.env
-#   then edit it: ANTHROPIC_API_KEY=sk-ant-...
+#   then edit it: FEATHERLESS_API_KEY=...
 
 # 3. Serve the function (auth off until Supabase Auth is wired up):
 supabase functions serve analyze --no-verify-jwt --env-file supabase/functions/.env
 ```
 
-It will be available at `http://localhost:54321/functions/v1/analyze`, which is the
-default the frontend uses (`VITE_ANALYZE_FUNCTION_URL`).
+It will be available at `http://localhost:54321/functions/v1/analyze`.
+
+> Note: during local dev the frontend talks to `server/dev.js` (port 3001), not
+> this function. This local serve is just to test the function in isolation
+> before deploying. The client only uses this function in production, via
+> `VITE_SUPABASE_URL`.
 
 Smoke test:
 
@@ -51,9 +56,10 @@ curl -s http://localhost:54321/functions/v1/analyze \
 ## Deploy (later, once a Supabase project exists)
 
 ```bash
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase secrets set FEATHERLESS_API_KEY=...
+supabase secrets set FEATHERLESS_MODEL=Qwen/Qwen2.5-72B-Instruct
 supabase functions deploy analyze
-# then set VITE_ANALYZE_FUNCTION_URL to https://<project-ref>.functions.supabase.co/analyze
+# then set VITE_SUPABASE_URL to https://<project-ref>.supabase.co in the frontend .env
 ```
 
 Re-enable JWT verification (drop `--no-verify-jwt`) once Supabase Auth is in place,

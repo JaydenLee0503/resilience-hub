@@ -1,8 +1,8 @@
 // Supabase Edge Function: analyze
 //
-// The privacy/security boundary. This is the ONLY place the Anthropic API key
-// exists — it lives in the server environment (ANTHROPIC_API_KEY), never in the
-// browser bundle.
+// The privacy/security boundary. This is the ONLY place the model-provider API
+// key exists — it lives in the server environment (FEATHERLESS_API_KEY), never
+// in the browser bundle. Mirrors server/dev.js so dev and prod behave the same.
 //
 // Contract:
 //   POST { "tokenizedText": string, "pipelineType"?: string }  <- text already scrubbed by the Guardian
@@ -146,9 +146,13 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Method not allowed. Use POST." }, 405);
   }
 
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) {
-    return json({ error: "Server is not configured (missing ANTHROPIC_API_KEY)." }, 500);
+  const FEATHERLESS_API_KEY = Deno.env.get("FEATHERLESS_API_KEY");
+  const FEATHERLESS_BASE_URL =
+    (Deno.env.get("FEATHERLESS_BASE_URL") ?? "https://api.featherless.ai/v1").replace(/\/$/, "");
+  const FEATHERLESS_MODEL =
+    Deno.env.get("FEATHERLESS_MODEL") ?? "Qwen/Qwen2.5-72B-Instruct";
+  if (!FEATHERLESS_API_KEY) {
+    return json({ error: "Server is not configured (missing FEATHERLESS_API_KEY)." }, 500);
   }
 
   let payload: { tokenizedText?: unknown; pipelineType?: unknown };
@@ -168,23 +172,30 @@ Deno.serve(async (req: Request) => {
   const pipeline_type = requestedType ?? classifyDocument(tokenizedText);
   const systemPrompt = PIPELINE_PROMPTS[pipeline_type] ?? FALLBACK_SYSTEM_PROMPT;
 
-  let anthropicRes: Response;
+  // Keep the prompt within model context.
+  const truncated = tokenizedText.length > 8000
+    ? tokenizedText.slice(0, 8000) + "\n[Truncated due to context limits]"
+    : tokenizedText;
+
+  let providerRes: Response;
   try {
-    anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+    providerRes = await fetch(`${FEATHERLESS_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        "authorization": `Bearer ${FEATHERLESS_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 2000,
-        system: systemPrompt,
+        model: FEATHERLESS_MODEL,
+        temperature: 0.1,
+        max_tokens: 2200,
+        response_format: { type: "json_object" },
         messages: [
+          { role: "system", content: systemPrompt.trim() },
           {
             role: "user",
-            content: `Analyze this document:\n\n${tokenizedText}`,
+            content:
+              `Selected pipeline_type: ${pipeline_type}\nReturn that exact pipeline_type unless the document is clearly a different supported pipeline.\n\nAnalyze this tokenized document:\n\n${truncated.trim()}`,
           },
         ],
       }),
@@ -193,20 +204,72 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Failed to reach the model provider.", detail: String(err) }, 502);
   }
 
-  if (!anthropicRes.ok) {
-    const detail = await anthropicRes.text().catch(() => "");
+  if (!providerRes.ok) {
+    const detail = await providerRes.text().catch(() => "");
     return json(
-      { error: `Model provider error ${anthropicRes.status}.`, detail: detail.slice(0, 300) },
+      { error: `Model provider error ${providerRes.status}.`, detail: detail.slice(0, 300) },
       502,
     );
   }
 
-  const data = await anthropicRes.json();
-  const text =
-    Array.isArray(data?.content)
-      ? data.content.find((b: { type?: string }) => b?.type === "text")?.text ?? ""
-      : "";
+  const data = await providerRes.json();
+  const rawText = data?.choices?.[0]?.message?.content ?? "";
 
-  // Return raw text — client is responsible for parsing and validation.
-  return json({ text }, 200);
+  // Parse + normalize to the canonical schema (CLAUDE.md §10) so the client
+  // always receives a ready-to-render object — same contract as server/dev.js.
+  const parsed = parseModelJson(rawText);
+  const final = normalizeAnalysis(parsed, pipeline_type);
+
+  return json(final, 200);
 });
+
+// ─── Parsing + normalization (mirrors server/dev.js) ───────────────────────
+function parseModelJson(rawText: string): Record<string, unknown> | null {
+  const clean = String(rawText || "")
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```\s*$/m, "")
+    .trim();
+  const start = clean.indexOf("{");
+  const end = clean.lastIndexOf("}");
+  const candidate = start !== -1 && end > start ? clean.slice(start, end + 1) : clean;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
+}
+
+const VALID_TYPES = new Set([
+  "immigration", "medical", "school", "legal",
+  "financial_aid", "housing", "employment", "common",
+]);
+const VALID_URGENCY = new Set(["low", "medium", "high", "critical"]);
+const asArray = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
+
+function normalizeAnalysis(
+  value: Record<string, unknown> | null,
+  pipelineType: string,
+): Record<string, unknown> {
+  const v = value ?? {};
+  return {
+    pipeline_type: VALID_TYPES.has(String(v.pipeline_type))
+      ? v.pipeline_type
+      : (VALID_TYPES.has(pipelineType) ? pipelineType : "common"),
+    urgency: VALID_URGENCY.has(String(v.urgency)) ? v.urgency : "medium",
+    plain_language_summary:
+      typeof v.plain_language_summary === "string" && v.plain_language_summary.trim()
+        ? v.plain_language_summary
+        : "The AI response could not be fully parsed. Review the original document and verify any deadlines before acting.",
+    what_matters: asArray(v.what_matters),
+    what_happens_if_ignored: asArray(v.what_happens_if_ignored),
+    what_to_do_next: asArray(v.what_to_do_next),
+    who_can_help: asArray(v.who_can_help),
+    checklist: asArray(v.checklist),
+    deadlines: asArray(v.deadlines),
+    questions_to_ask: asArray(v.questions_to_ask),
+    disclaimer:
+      typeof v.disclaimer === "string" && v.disclaimer.trim()
+        ? v.disclaimer
+        : "This is an AI-generated summary for informational purposes only. It is not legal, medical, or immigration advice. Verify all deadlines and decisions with a qualified professional.",
+  };
+}

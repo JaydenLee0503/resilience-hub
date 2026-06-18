@@ -63,8 +63,9 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
 
   const BLUE  = 'rgba(91,140,255,';
   const PURP  = 'rgba(160,107,255,';
-  const PANEL = { background:'rgba(255,255,255,.035)', border:'1px solid rgba(255,255,255,.08)', borderRadius:16, padding:'22px 26px' };
-  const LABEL = { fontSize:11, fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.16em', textTransform:'uppercase', color:'#5a637c', marginBottom:10, display:'block' };
+  const ARCHIVO = "'Archivo','D-DIN Bold',system-ui,sans-serif";
+  const PANEL = { background:'rgba(255,255,255,.035)', border:'1px solid rgba(255,255,255,.09)', borderRadius:22, padding:'22px 26px', boxShadow:'0 24px 70px rgba(0,0,0,.22)' };
+  const LABEL = { fontSize:12, fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.16em', textTransform:'uppercase', color:'#5b8cff', marginBottom:10, display:'block' };
   const MUTED = { fontSize:14, color:'#98a2bb', lineHeight:1.65, margin:0 };
 
   // ─── Section: string array list ─────────────────────────────────────────
@@ -80,13 +81,13 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
   );
 
   return (
-    <div style={{ minHeight:'100vh', background:'#06070e', color:'#eef1f7', fontFamily:"'Hanken Grotesk','D-DIN Bold',system-ui,sans-serif" }}>
+    <div className="product-shell" style={{ minHeight:'100vh', color:'#eef1f7' }}>
 
-      {/* ── Sticky Nav ── */}
-      <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 28px', borderBottom:'1px solid rgba(255,255,255,.06)', position:'sticky', top:0, background:'rgba(6,7,14,.88)', backdropFilter:'blur(14px)', zIndex:40 }}>
+      {/* ── Sticky Nav (matches landing / product nav) ── */}
+      <nav className="product-nav">
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:8, height:8, borderRadius:'50%', background:`linear-gradient(135deg,${BLUE}1),${PURP}1))`, boxShadow:`0 0 10px ${BLUE}0.9)` }} />
-          <span style={{ fontFamily:"'Instrument Serif',Georgia,serif", fontSize:17 }}>Resilience Hub</span>
+          <span className="brand-pulse" />
+          <span style={{ fontFamily:ARCHIVO, fontWeight:900, textTransform:'uppercase', letterSpacing:'.04em', fontSize:16 }}>ResilienceHub</span>
           {d.pipeline_type && (
             <span style={{ fontSize:12, padding:'3px 10px', borderRadius:999, background:`${BLUE}0.1)`, border:`1px solid ${BLUE}0.2)`, color:'#5b8cff', marginLeft:4 }}>
               {PIPELINE_LABELS[d.pipeline_type] ?? d.pipeline_type}

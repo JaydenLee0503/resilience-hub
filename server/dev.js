@@ -38,7 +38,7 @@ try {
 
 const API_KEY = process.env.FEATHERLESS_API_KEY;
 const FEATHERLESS_BASE_URL = process.env.FEATHERLESS_BASE_URL || 'https://api.featherless.ai/v1';
-const FEATHERLESS_MODEL = process.env.FEATHERLESS_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3';
+const FEATHERLESS_MODEL = process.env.FEATHERLESS_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
 if (!API_KEY) {
   console.warn('[server/dev.js] FEATHERLESS_API_KEY is not set. Server will return demo-mode analyses.');
 }
