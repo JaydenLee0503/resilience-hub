@@ -1,10 +1,14 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { rehydrateDeep } from '../agents/rehydrate';
+import { runChat } from '../agents/chat';
 import { PIPELINE_LABELS } from '../agents/pipelines/classifier';
 import { downloadPdfReport, downloadTextReport } from '../lib/reportExport';
 
 /**
  * CrisisActionRoom — renders the canonical Resilience Hub output schema.
+ *
+ * Design: Inter typeface, sharp editorial layout. Sections are separated by
+ * hairlines (no rounded cards); accents use square swatches and left rules.
  *
  * Canonical schema (CLAUDE.md §10):
  *   pipeline_type, urgency, plain_language_summary,
@@ -12,10 +16,11 @@ import { downloadPdfReport, downloadTextReport } from '../lib/reportExport';
  *   who_can_help, checklist, deadlines, questions_to_ask, disclaimer
  *
  * Props:
- *   analysis     {object}           — raw server response (may contain tokens)
- *   mappingTable {Map<string,str>}  — Guardian's token→value map
- *   guardianStats {object}          — { total, types } for the privacy badge
- *   onReset      {function}         — return to UploadZone
+ *   analysis      {object}           — raw server response (may contain tokens)
+ *   mappingTable  {Map<string,str>}  — Guardian's token→value map
+ *   guardianStats {object}           — { total, types } for the privacy badge
+ *   onReset       {function}         — return to UploadZone
+ *   onDashboard   {function}         — return to dashboard
  */
 export default function CrisisActionRoom({ analysis, mappingTable, guardianStats, onReset, onDashboard }) {
   // Re-hydrate all string values client-side before rendering.
@@ -41,254 +46,200 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
   const checklist = d.checklist ?? [];
   const doneCount = checklist.filter((i) => checked.has(i.id)).length;
   const [chatInput, setChatInput] = useState('');
+  const [chatPending, setChatPending] = useState(false);
   const [messages, setMessages] = useState([
     { role: 'assistant', text: 'Ask me what matters, what happens if you ignore it, what to do next, who can help, or which deadline is most urgent.' },
   ]);
 
-  const askQuestion = useCallback(() => {
+  const askQuestion = useCallback(async () => {
     const question = chatInput.trim();
-    if (!question) return;
-    setMessages((prev) => [...prev, { role: 'user', text: question }, { role: 'assistant', text: answerFromReport(question, d) }]);
+    if (!question || chatPending) return;
+    setMessages((prev) => [...prev, { role: 'user', text: question }]);
     setChatInput('');
-  }, [chatInput, d]);
+    setChatPending(true);
+    try {
+      // Real AI answer via Featherless (server-side key). PII is tokenized in
+      // chat.js before the question + report ever leave this device.
+      const answer = await runChat(question, d);
+      setMessages((prev) => [...prev, { role: 'assistant', text: answer }]);
+    } catch (err) {
+      console.warn('[chat] live answer failed, using local fallback:', err.message);
+      setMessages((prev) => [...prev, { role: 'assistant', text: answerFromReport(question, d) }]);
+    } finally {
+      setChatPending(false);
+    }
+  }, [chatInput, chatPending, d]);
 
-  // ─── Design tokens ──────────────────────────────────────────────────────
-  const URGENCY_STYLES = {
-    critical: { border: 'rgba(239,68,68,.3)',  bg: 'rgba(239,68,68,.07)',  dot: '#f87171', label: 'Critical' },
-    high:     { border: 'rgba(251,146,60,.25)', bg: 'rgba(251,146,60,.06)', dot: '#fb923c', label: 'High urgency' },
-    medium:   { border: 'rgba(250,204,21,.2)',  bg: 'rgba(250,204,21,.05)', dot: '#fbbf24', label: 'Medium urgency' },
-    low:      { border: 'rgba(74,222,128,.2)',  bg: 'rgba(74,222,128,.05)', dot: '#4ade80', label: 'Low urgency' },
+  const URGENCY = {
+    critical: { color: '#f87171', label: 'Critical' },
+    high:     { color: '#fb923c', label: 'High urgency' },
+    medium:   { color: '#fbbf24', label: 'Medium urgency' },
+    low:      { color: '#4ade80', label: 'Low urgency' },
   };
-  const urgencyStyle = URGENCY_STYLES[d.urgency] ?? URGENCY_STYLES.medium;
-
-  const BLUE  = 'rgba(91,140,255,';
-  const PURP  = 'rgba(160,107,255,';
-  const ARCHIVO = "'Archivo','D-DIN Bold',system-ui,sans-serif";
-  const PANEL = { background:'rgba(255,255,255,.035)', border:'1px solid rgba(255,255,255,.09)', borderRadius:22, padding:'22px 26px', boxShadow:'0 24px 70px rgba(0,0,0,.22)' };
-  const LABEL = { fontSize:12, fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.16em', textTransform:'uppercase', color:'#5b8cff', marginBottom:10, display:'block' };
-  const MUTED = { fontSize:14, color:'#98a2bb', lineHeight:1.65, margin:0 };
-
-  // ─── Section: string array list ─────────────────────────────────────────
-  const StringList = ({ items }) => (
-    <ul style={{ margin:0, padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:10 }}>
-      {(items ?? []).map((item, i) => (
-        <li key={i} style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
-          <span style={{ width:6, height:6, borderRadius:'50%', background:`${BLUE}0.6)`, flexShrink:0, marginTop:7 }} />
-          <span style={{ fontSize:15, lineHeight:1.65, color:'#d8dff0' }}>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
+  const urgency = URGENCY[d.urgency] ?? URGENCY.medium;
 
   return (
-    <div className="product-shell" style={{ minHeight:'100vh', color:'#eef1f7' }}>
+    <div className="product-shell report-shell" style={{ minHeight: '100vh' }}>
 
-      {/* ── Sticky Nav (matches landing / product nav) ── */}
+      {/* ── Sticky nav ── */}
       <nav className="product-nav">
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="brand-pulse" />
-          <span style={{ fontFamily:ARCHIVO, fontWeight:900, textTransform:'uppercase', letterSpacing:'.04em', fontSize:16 }}>Beacon Atlas</span>
+          <span className="display" style={{ fontSize: 19 }}>Beacon Atlas</span>
           {d.pipeline_type && (
-            <span style={{ fontSize:12, padding:'3px 10px', borderRadius:999, background:`${BLUE}0.1)`, border:`1px solid ${BLUE}0.2)`, color:'#5b8cff', marginLeft:4 }}>
+            <span className="report-mono" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '4px 9px', border: '1px solid rgba(91,140,255,0.25)', color: '#5b8cff', marginLeft: 6 }}>
               {PIPELINE_LABELS[d.pipeline_type] ?? d.pipeline_type}
             </span>
           )}
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
-          <button onClick={() => downloadTextReport(d)} style={NAV_BUTTON}>Download TXT</button>
-          <button onClick={() => downloadPdfReport(d)} style={NAV_BUTTON}>Download PDF</button>
-          <button onClick={onDashboard || onReset} style={NAV_BUTTON}>Dashboard</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button className="report-nav-btn" onClick={() => downloadTextReport(d)}>Download TXT</button>
+          <button className="report-nav-btn" onClick={() => downloadPdfReport(d)}>Download PDF</button>
+          <button className="report-nav-btn accent" onClick={onDashboard || onReset}>Dashboard</button>
         </div>
       </nav>
 
-      <div style={{ maxWidth:800, margin:'0 auto', padding:'36px 22px 80px', display:'flex', flexDirection:'column', gap:20 }}>
+      <div className="report-body">
 
-        {/* ── Urgency banner ── */}
-        <div style={{ ...PANEL, background:urgencyStyle.bg, border:`1px solid ${urgencyStyle.border}`, display:'flex', alignItems:'center', gap:14 }}>
-          <span style={{ width:10, height:10, borderRadius:'50%', background:urgencyStyle.dot, boxShadow:`0 0 10px ${urgencyStyle.dot}`, flexShrink:0 }} />
-          <div>
-            <span style={{ fontSize:11, fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.15em', textTransform:'uppercase', color:urgencyStyle.dot }}>{urgencyStyle.label}</span>
-            <p style={{ margin:'4px 0 0', fontSize:15, lineHeight:1.6, color:'#eef1f7', fontWeight:500 }}>{d.plain_language_summary}</p>
-          </div>
-        </div>
+        {/* ── Lead: urgency + plain summary ── */}
+        <header className="report-head" style={{ '--urgency': urgency.color }}>
+          <span className="report-urgency">{urgency.label}</span>
+          <p className="report-lead">{d.plain_language_summary}</p>
+        </header>
 
-        {/* ── Privacy badge ── */}
-        {guardianStats?.total > 0 && (
-          <div style={{ ...PANEL, background:`${BLUE}0.05)`, border:`1px solid ${BLUE}0.15)`, display:'flex', gap:14, alignItems:'flex-start' }}>
-            <span style={{ fontSize:18, flexShrink:0 }}>🔒</span>
-            <div>
-              <span style={LABEL}>Privacy</span>
-              <p style={{ ...MUTED, color:'#98a2bb' }}>
-                <strong style={{ color:'#eef1f7' }}>{guardianStats.total} identifier{guardianStats.total > 1 ? 's' : ''}</strong>{' '}
-                ({Object.entries(guardianStats.types ?? {}).map(([k,n]) => `${n} ${k}`).join(', ')}) were replaced with tokens before leaving your device.{' '}
-                <span style={{ color:'#5a637c' }}>Open DevTools → Network to verify.</span>
-              </p>
-            </div>
-          </div>
-        )}
+        {/* ── Privacy trace: what happened to your data during this analysis ── */}
+        <PrivacyTrace guardianStats={guardianStats} />
 
         {/* ── What matters ── */}
         {(d.what_matters ?? []).length > 0 && (
-          <div style={PANEL}>
-            <span style={LABEL}>What matters</span>
-            <StringList items={d.what_matters} />
-          </div>
+          <section className="report-section">
+            <span className="report-label">What matters</span>
+            <ul className="report-list">
+              {d.what_matters.map((item, i) => <li key={i}><span>{item}</span></li>)}
+            </ul>
+          </section>
         )}
 
         {/* ── What happens if ignored ── */}
         {(d.what_happens_if_ignored ?? []).length > 0 && (
-          <div style={{ ...PANEL, background:'rgba(239,68,68,.04)', border:'1px solid rgba(239,68,68,.12)' }}>
-            <span style={{ ...LABEL, color:'#f87171' }}>What happens if you ignore this</span>
-            <ul style={{ margin:0, padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:10 }}>
-              {d.what_happens_if_ignored.map((item, i) => (
-                <li key={i} style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
-                  <span style={{ color:'#f87171', fontSize:16, lineHeight:1.4, flexShrink:0 }}>⚠</span>
-                  <span style={{ fontSize:15, lineHeight:1.65, color:'#fca5a5' }}>{item}</span>
-                </li>
-              ))}
+          <section className="report-section">
+            <span className="report-label danger">What happens if you ignore this</span>
+            <ul className="report-risk">
+              {d.what_happens_if_ignored.map((item, i) => <li key={i}><span>{item}</span></li>)}
             </ul>
-          </div>
+          </section>
         )}
 
         {/* ── What to do next ── */}
         {(d.what_to_do_next ?? []).length > 0 && (
-          <div style={PANEL}>
-            <span style={LABEL}>What to do next</span>
-            <ol style={{ margin:0, padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:12, counterReset:'steps' }}>
-              {d.what_to_do_next.map((item, i) => (
-                <li key={i} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
-                  <span style={{ width:24, height:24, borderRadius:8, background:`${BLUE}0.12)`, border:`1px solid ${BLUE}0.22)`, color:'#5b8cff', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:"'IBM Plex Mono',monospace" }}>
-                    {i + 1}
-                  </span>
-                  <span style={{ fontSize:15, lineHeight:1.65, color:'#d8dff0', paddingTop:2 }}>{item}</span>
-                </li>
-              ))}
+          <section className="report-section">
+            <span className="report-label">What to do next</span>
+            <ol className="report-steps">
+              {d.what_to_do_next.map((item, i) => <li key={i}><span>{item}</span></li>)}
             </ol>
-          </div>
+          </section>
         )}
 
         {/* ── Checklist ── */}
         {checklist.length > 0 && (
-          <div style={{ ...PANEL, padding:0 }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 26px 16px', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
-              <span style={{ ...LABEL, marginBottom:0 }}>Checklist</span>
-              <span style={{ fontSize:13, color:'#5a637c' }}>{doneCount}/{checklist.length} done</span>
+          <section className="report-section">
+            <div className="report-checkhead">
+              <span className="report-label" style={{ marginBottom: 0 }}>Checklist</span>
+              <span className="report-count">{doneCount}/{checklist.length} done</span>
             </div>
-            <div style={{ display:'flex', flexDirection:'column' }}>
+            <div className="report-check">
               {checklist.map((item) => {
                 const done = checked.has(item.id);
                 return (
-                  <div
-                    key={item.id}
-                    onClick={() => toggle(item.id)}
-                    style={{ display:'flex', gap:14, padding:'14px 26px', cursor:'pointer', borderLeft:`3px solid ${done ? '#4ade80' : BLUE+'0.4)'}`, background: done ? 'rgba(74,222,128,.025)' : 'transparent', transition:'background .15s' }}
-                    onMouseEnter={(e) => !done && (e.currentTarget.style.background='rgba(255,255,255,.02)')}
-                    onMouseLeave={(e) => e.currentTarget.style.background = done ? 'rgba(74,222,128,.025)' : 'transparent'}
-                  >
-                    <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${done ? '#4ade80' : BLUE+'0.5)'}`, background: done ? 'rgba(74,222,128,.15)' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:2 }}>
-                      {done && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 3L9 1" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </div>
-                    <div style={{ flex:1, opacity: done ? 0.45 : 1 }}>
-                      <span style={{ fontSize:14, lineHeight:1.6, textDecoration: done ? 'line-through' : 'none', color:'#d8dff0' }}>{item.text}</span>
-                      {item.deadline && (
-                        <span style={{ marginLeft:10, fontSize:12, padding:'2px 8px', borderRadius:999, background:'rgba(251,146,60,.08)', border:'1px solid rgba(251,146,60,.2)', color:'#fb923c', fontFamily:"'IBM Plex Mono',monospace" }}>
-                          {item.deadline}
-                        </span>
-                      )}
-                    </div>
+                  <div key={item.id} className={`report-check-row ${done ? 'done' : ''}`} onClick={() => toggle(item.id)}>
+                    <span className="report-check-box">
+                      {done && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 3L9 1" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                    </span>
+                    <span style={{ flex: 1 }}>
+                      <span className="report-check-text">{item.text}</span>
+                      {item.deadline && <span className="report-check-due">{item.deadline}</span>}
+                    </span>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
 
         {/* ── Deadlines ── */}
         {(d.deadlines ?? []).length > 0 && (
-          <div style={PANEL}>
-            <span style={LABEL}>Deadlines</span>
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <section className="report-section">
+            <span className="report-label">Deadlines</span>
+            <div className="report-rows">
               {d.deadlines.map((dl, i) => (
-                <div key={i} style={{ display:'flex', gap:14, padding:'14px 16px', borderRadius:12, background:'rgba(255,255,255,.025)', border:'1px solid rgba(255,255,255,.06)' }}>
-                  <div style={{ minWidth:90, fontSize:12, fontFamily:"'IBM Plex Mono',monospace", color:'#fb923c', fontWeight:600, paddingTop:2 }}>{dl.date}</div>
+                <div key={i} className="report-row">
+                  <span className="report-date">{dl.date}</span>
                   <div>
-                    <p style={{ margin:'0 0 4px', fontSize:14, color:'#d8dff0', fontWeight:500 }}>{dl.task}</p>
-                    {dl.consequence && <p style={{ margin:0, fontSize:13, color:'#5a637c' }}>If missed: {dl.consequence}</p>}
+                    <p className="report-task">{dl.task}</p>
+                    {dl.consequence && <p className="report-meta">If missed: {dl.consequence}</p>}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {/* ── Who can help ── */}
         {(d.who_can_help ?? []).length > 0 && (
-          <div style={PANEL}>
-            <span style={LABEL}>Who can help</span>
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <section className="report-section">
+            <span className="report-label">Who can help</span>
+            <div className="report-rows">
               {d.who_can_help.map((org, i) => (
-                <div key={i} style={{ padding:'14px 16px', borderRadius:12, background:'rgba(255,255,255,.025)', border:'1px solid rgba(255,255,255,.06)' }}>
-                  <p style={{ margin:'0 0 4px', fontSize:14, fontWeight:600, color:'#eef1f7' }}>{org.name}</p>
-                  {org.contact && <p style={{ margin:'0 0 4px', fontSize:13, color:'#5b8cff', fontFamily:"'IBM Plex Mono',monospace" }}>{org.contact}</p>}
-                  {org.note && <p style={{ margin:0, fontSize:13, color:'#98a2bb' }}>{org.note}</p>}
+                <div key={i} className="report-row" style={{ display: 'block' }}>
+                  <p className="report-name">{org.name}</p>
+                  {org.contact && <p className="report-contact">{org.contact}</p>}
+                  {org.note && <p className="report-meta">{org.note}</p>}
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {/* ── Questions to ask ── */}
         {(d.questions_to_ask ?? []).length > 0 && (
-          <div style={PANEL}>
-            <span style={LABEL}>Questions to ask your lawyer or caseworker</span>
-            <StringList items={d.questions_to_ask} />
-          </div>
+          <section className="report-section">
+            <span className="report-label">Questions to ask your lawyer or caseworker</span>
+            <ul className="report-list">
+              {d.questions_to_ask.map((item, i) => <li key={i}><span>{item}</span></li>)}
+            </ul>
+          </section>
         )}
 
-        <div style={PANEL}>
-          <span style={LABEL}>Follow-up chat</span>
-          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14 }}>
+        {/* ── Follow-up chat ── */}
+        <section className="report-section">
+          <span className="report-label">Follow-up chat</span>
+          <div className="report-chat">
             {messages.map((message, index) => (
-              <div
-                key={`${message.role}-${index}`}
-                style={{
-                  alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth:'82%',
-                  padding:'12px 14px',
-                  borderRadius:14,
-                  background: message.role === 'user' ? `${BLUE}0.18)` : 'rgba(255,255,255,.045)',
-                  border: message.role === 'user' ? `1px solid ${BLUE}0.26)` : '1px solid rgba(255,255,255,.08)',
-                  color:'#d8dff0',
-                  fontSize:14,
-                  lineHeight:1.55,
-                }}
-              >
+              <div key={`${message.role}-${index}`} className={`report-bubble ${message.role}`}>
                 {message.text}
               </div>
             ))}
+            {chatPending && (
+              <div className="report-bubble assistant report-typing">
+                <span /><span /><span />
+              </div>
+            )}
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10 }}>
+          <div className="report-ask">
             <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') askQuestion(); }}
-              placeholder="Ask about urgency, deadlines, risks, next steps, or who can help..."
-              style={{
-                minWidth:0,
-                border:'1px solid rgba(255,255,255,.09)',
-                borderRadius:999,
-                padding:'12px 16px',
-                background:'rgba(255,255,255,.035)',
-                color:'#eef1f7',
-                fontFamily:'inherit',
-              }}
+              placeholder="Ask about urgency, deadlines, risks, next steps, or who can help…"
+              disabled={chatPending}
             />
-            <button onClick={askQuestion} style={{ ...NAV_BUTTON, background:`linear-gradient(135deg,${BLUE}1),${PURP}1))`, color:'#fff' }}>Ask</button>
+            <button onClick={askQuestion} disabled={chatPending}>{chatPending ? '…' : 'Ask'}</button>
           </div>
-        </div>
+          <p className="report-chat-note report-mono">Answered by AI from your tokenized report — your real values never leave this device.</p>
+        </section>
 
         {/* ── Disclaimer ── */}
-        <p style={{ fontSize:12, color:'#3a4255', lineHeight:1.65, textAlign:'center', maxWidth:600, margin:'8px auto 0' }}>
+        <p className="report-disclaimer">
           {d.disclaimer || 'This is an AI-generated summary for informational purposes only. It is not legal, medical, or immigration advice. Verify all deadlines and decisions with a qualified professional before acting.'}
         </p>
 
@@ -297,17 +248,52 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
   );
 }
 
-const NAV_BUTTON = {
-  background:'rgba(255,255,255,.05)',
-  border:'1px solid rgba(255,255,255,.1)',
-  borderRadius:999,
-  padding:'8px 16px',
-  color:'#eef1f7',
-  fontSize:13,
-  fontWeight:500,
-  cursor:'pointer',
-  fontFamily:'inherit',
-};
+/**
+ * PrivacyTrace — a small workflow that shows what happened to the user's data
+ * during this analysis: PII is tokenized on the device, only tokens reach the
+ * AI, the raw document is never stored, and real values are restored locally.
+ */
+function PrivacyTrace({ guardianStats }) {
+  const total = guardianStats?.total;
+  const types = guardianStats?.types ?? {};
+  const typeSummary = Object.entries(types).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(', ');
+
+  const steps = [
+    {
+      tag: 'On device',
+      title: total != null ? `Tokenized ${total} identifier${total === 1 ? '' : 's'}` : 'Tokenized on device',
+      sub: total
+        ? `Real values${typeSummary ? ` (${typeSummary})` : ''} were swapped for [DATE_1]-style tokens in your browser.`
+        : 'Personal identifiers were swapped for [DATE_1]-style tokens in your browser.',
+    },
+    { tag: 'Sent', title: 'Only tokens left', sub: 'The AI received the tokenized text — never your real names, dates, or amounts.' },
+    { tag: 'Analyzed', title: 'No raw copy stored', sub: 'The document runs through analysis in memory; the raw text is not logged or kept.' },
+    { tag: 'On device', title: 'Re-hydrated locally', sub: 'Tokens were turned back into your real values only here, for you.' },
+  ];
+
+  return (
+    <section className="report-flow">
+      <div className="report-flow-head">
+        <span className="report-flow-lock" aria-hidden="true">
+          <svg width="13" height="14" viewBox="0 0 13 14" fill="none"><path d="M3 6V4a3.5 3.5 0 117 0v2" stroke="currentColor" strokeWidth="1.4"/><rect x="1.5" y="6" width="10" height="7" rx="0" stroke="currentColor" strokeWidth="1.4"/></svg>
+        </span>
+        <span className="report-flow-title">Your personal data was not recorded during this analysis</span>
+        <span className="report-flow-badge report-mono">Zero-retention</span>
+      </div>
+      <ol className="report-flow-steps">
+        {steps.map((s, i) => (
+          <li key={i} className="report-flow-step">
+            <span className="report-flow-node report-mono">{String(i + 1).padStart(2, '0')}</span>
+            <span className="report-flow-tag report-mono">{s.tag}</span>
+            <span className="report-flow-step-title">{s.title}</span>
+            <span className="report-flow-sub">{s.sub}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="report-flow-foot report-mono">Verify it yourself: open DevTools → Network and inspect the request — it contains tokens, not your data.</p>
+    </section>
+  );
+}
 
 function answerFromReport(question, report) {
   const lower = question.toLowerCase();

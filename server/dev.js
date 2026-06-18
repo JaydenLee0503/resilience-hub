@@ -43,6 +43,14 @@ if (!API_KEY) {
   console.warn('[server/dev.js] FEATHERLESS_API_KEY is not set. Server will return demo-mode analyses.');
 }
 
+// Follow-up chat — answers questions from an already-analyzed report.
+// The context it receives is tokenized (no real PII); tokens must be preserved.
+const CHAT_SYSTEM_PROMPT = `You are a calm follow-up assistant inside Resilience Hub. The user already received a structured action plan for a stressful document. Answer their question using ONLY the report context provided.
+
+The context is privacy-tokenized: real dates, amounts, names, and IDs appear as tokens like [DATE_1] or [AMOUNT_1]. Keep these tokens EXACTLY as they appear. Never invent or guess the real value behind a token.
+
+If the answer is not in the context, say you do not see it in the report and suggest checking the original document or a qualified professional. Reply in 2-4 short sentences at a grade-6 reading level, second person ("you"). Plain text only — no JSON, no markdown.`;
+
 // ─── Import pipeline modules ─────────────────────────────────────────────────
 async function loadPipelines() {
   const { classifyDocument } = await import('../src/agents/pipelines/classifier.js');
@@ -97,6 +105,10 @@ async function handleRequest(req, res, pipelines) {
     res.writeHead(204, CORS_HEADERS);
     res.end();
     return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/chat') {
+    return handleChat(req, res);
   }
 
   if (req.method !== 'POST' || req.url !== '/api/analyze') {
@@ -206,6 +218,78 @@ async function handleRequest(req, res, pipelines) {
 
   res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
   res.end(JSON.stringify(final));
+}
+
+// ─── Follow-up chat handler ──────────────────────────────────────────────────
+async function handleChat(req, res) {
+  let body = '';
+  for await (const chunk of req) body += chunk;
+
+  let question, context;
+  try {
+    ({ question, context } = JSON.parse(body));
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+    return;
+  }
+
+  if (!question || typeof question !== 'string') {
+    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: 'question is required' }));
+    return;
+  }
+
+  // The Guardian runs on the device before this; context/question must be tokenized.
+  const residualPii = auditRawPii(`${context ?? ''}\n${question}`);
+  if (residualPii.length) {
+    res.writeHead(422, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: `Guardian blocked this chat because the text still looks sensitive: ${residualPii.join(', ')}` }));
+    return;
+  }
+
+  if (!API_KEY) {
+    res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ answer: 'Demo mode: no AI key is set, so I can\'t generate a live answer. Check the deadlines and the "what to do next" steps in your report above.' }));
+    return;
+  }
+
+  let featherlessRes;
+  try {
+    featherlessRes = await fetch(`${FEATHERLESS_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: FEATHERLESS_MODEL,
+        temperature: 0.2,
+        max_tokens: 400,
+        messages: [
+          { role: 'system', content: CHAT_SYSTEM_PROMPT },
+          { role: 'user', content: `Report context:\n${(context ?? '').slice(0, 8000)}\n\nUser question: ${question}` },
+        ],
+      }),
+    });
+  } catch (err) {
+    console.error('[chat] Featherless fetch failed:', err.message);
+    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: 'Failed to reach AI service. Check your network.' }));
+    return;
+  }
+
+  if (!featherlessRes.ok) {
+    const errBody = await featherlessRes.text().catch(() => '');
+    console.error(`[chat] Featherless error ${featherlessRes.status}:`, errBody.slice(0, 200));
+    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: `AI service error: ${featherlessRes.status}` }));
+    return;
+  }
+
+  const data = await featherlessRes.json();
+  const answer = (data.choices?.[0]?.message?.content ?? '').trim();
+  console.log('[chat] answered follow-up question');
+
+  res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+  res.end(JSON.stringify({ answer: answer || 'I could not find an answer in your report. Check the original document or a qualified professional.' }));
 }
 
 function parseModelJson(rawText, pipelineType, tokenizedText) {

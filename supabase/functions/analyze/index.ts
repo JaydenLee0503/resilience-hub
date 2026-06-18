@@ -108,6 +108,14 @@ Set pipeline_type to whichever best fits the document content.
 Grade-6 reading level. Second person ("you"). Active voice.
 Tokens like [DATE_1] must appear exactly as-is in your output.`;
 
+// Follow-up chat — answers questions from an already-analyzed report.
+// Context is tokenized (no real PII); tokens must be preserved verbatim.
+const CHAT_SYSTEM_PROMPT = `You are a calm follow-up assistant inside Resilience Hub. The user already received a structured action plan for a stressful document. Answer their question using ONLY the report context provided.
+
+The context is privacy-tokenized: real dates, amounts, names, and IDs appear as tokens like [DATE_1] or [AMOUNT_1]. Keep these tokens EXACTLY as they appear. Never invent or guess the real value behind a token.
+
+If the answer is not in the context, say you do not see it in the report and suggest checking the original document or a qualified professional. Reply in 2-4 short sentences at a grade-6 reading level, second person ("you"). Plain text only — no JSON, no markdown.`;
+
 const PIPELINE_PROMPTS: Record<string, string> = {
   immigration: IMMIGRATION_SYSTEM_PROMPT,
   // Add remaining pipelines here as they are built:
@@ -155,11 +163,20 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Server is not configured (missing FEATHERLESS_API_KEY)." }, 500);
   }
 
-  let payload: { tokenizedText?: unknown; pipelineType?: unknown };
+  let payload: { tokenizedText?: unknown; pipelineType?: unknown; mode?: unknown; question?: unknown; context?: unknown };
   try {
     payload = await req.json();
   } catch {
     return json({ error: "Request body must be valid JSON." }, 400);
+  }
+
+  // Follow-up chat path (same function, branches on mode).
+  if (payload?.mode === "chat") {
+    return await handleChat(payload, {
+      FEATHERLESS_API_KEY,
+      FEATHERLESS_BASE_URL,
+      FEATHERLESS_MODEL,
+    });
   }
 
   const tokenizedText = payload?.tokenizedText;
@@ -222,6 +239,53 @@ Deno.serve(async (req: Request) => {
 
   return json(final, 200);
 });
+
+// ─── Follow-up chat handler ────────────────────────────────────────────────
+async function handleChat(
+  payload: { question?: unknown; context?: unknown },
+  cfg: { FEATHERLESS_API_KEY: string; FEATHERLESS_BASE_URL: string; FEATHERLESS_MODEL: string },
+): Promise<Response> {
+  const question = payload?.question;
+  const context = typeof payload?.context === "string" ? payload.context : "";
+
+  if (typeof question !== "string" || question.trim().length === 0) {
+    return json({ error: "Field 'question' (non-empty string) is required." }, 400);
+  }
+
+  let providerRes: Response;
+  try {
+    providerRes = await fetch(`${cfg.FEATHERLESS_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${cfg.FEATHERLESS_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: cfg.FEATHERLESS_MODEL,
+        temperature: 0.2,
+        max_tokens: 400,
+        messages: [
+          { role: "system", content: CHAT_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `Report context:\n${context.slice(0, 8000)}\n\nUser question: ${question}`,
+          },
+        ],
+      }),
+    });
+  } catch (err) {
+    return json({ error: "Failed to reach the model provider.", detail: String(err) }, 502);
+  }
+
+  if (!providerRes.ok) {
+    const detail = await providerRes.text().catch(() => "");
+    return json({ error: `Model provider error ${providerRes.status}.`, detail: detail.slice(0, 300) }, 502);
+  }
+
+  const data = await providerRes.json();
+  const answer = (data?.choices?.[0]?.message?.content ?? "").trim();
+  return json({ answer: answer || "I could not find an answer in your report. Check the original document or a qualified professional." }, 200);
+}
 
 // ─── Parsing + normalization (mirrors server/dev.js) ───────────────────────
 function parseModelJson(rawText: string): Record<string, unknown> | null {
