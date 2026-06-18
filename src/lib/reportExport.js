@@ -1,5 +1,5 @@
 export function buildReportText(analysis) {
-  const lines = ['ResilienceHub Crisis Report', `Pipeline: ${analysis.pipeline_type ?? 'common'}`, `Urgency: ${analysis.urgency ?? 'medium'}`, '', 'Plain Summary', analysis.plain_language_summary ?? ''];
+  const lines = ['Beacon Atlas Crisis Report', `Pipeline: ${analysis.pipeline_type ?? 'common'}`, `Urgency: ${analysis.urgency ?? 'medium'}`, '', 'Plain Summary', analysis.plain_language_summary ?? ''];
   appendList(lines, 'What Matters', analysis.what_matters);
   appendList(lines, 'What Happens If Ignored', analysis.what_happens_if_ignored);
   appendList(lines, 'What To Do Next', analysis.what_to_do_next);

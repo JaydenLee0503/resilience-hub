@@ -87,7 +87,7 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
       <nav className="product-nav">
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <span className="brand-pulse" />
-          <span style={{ fontFamily:ARCHIVO, fontWeight:900, textTransform:'uppercase', letterSpacing:'.04em', fontSize:16 }}>ResilienceHub</span>
+          <span style={{ fontFamily:ARCHIVO, fontWeight:900, textTransform:'uppercase', letterSpacing:'.04em', fontSize:16 }}>Beacon Atlas</span>
           {d.pipeline_type && (
             <span style={{ fontSize:12, padding:'3px 10px', borderRadius:999, background:`${BLUE}0.1)`, border:`1px solid ${BLUE}0.2)`, color:'#5b8cff', marginLeft:4 }}>
               {PIPELINE_LABELS[d.pipeline_type] ?? d.pipeline_type}

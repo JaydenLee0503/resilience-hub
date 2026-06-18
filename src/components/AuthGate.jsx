@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 /**
- * AuthGate — real Supabase email/password auth.
+ * AuthGate — minimal editorial Supabase email/password auth.
  *
- * Navigation after a successful sign-in/sign-up is driven by the
- * onAuthStateChange listener in App.jsx, so this component only needs to
- * trigger the auth call and surface errors.
+ * Navigation after success is driven by the onAuthStateChange listener in
+ * App.jsx, so this only triggers the auth call and surfaces errors.
  */
 export default function AuthGate({ onBack }) {
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
@@ -43,7 +42,6 @@ export default function AuthGate({ onBack }) {
           options: { data: { name: name.trim() } },
         });
         if (signUpError) throw signUpError;
-        // If email confirmation is ON, no session is returned yet.
         if (!data.session) {
           setNotice('Account created. Check your email to confirm, then sign in.');
           setMode('signin');
@@ -64,68 +62,55 @@ export default function AuthGate({ onBack }) {
   }
 
   return (
-    <div className="product-shell auth-shell">
+    <div className="product-shell auth-screen">
       <ProductNav onBack={onBack} />
-      <main className="auth-grid">
-        <section className="auth-copy">
-          <span className="mono-kicker">Private account workspace</span>
-          <h1>Secure crisis rooms for every document.</h1>
-          <p>
-            Sign in to keep your analyzed plans in one private workspace. Each report is locked to
-            your account by row-level security — no one else can read it. The Guardian still
-            tokenizes every document before any AI sees it.
+
+      <main className="auth-screen-body">
+        <div className="auth-inner">
+          <span className="mono-kicker">Private workspace</span>
+          <h1 className="display auth-title">
+            {isSignup ? 'Create your account.' : 'Welcome back.'}
+          </h1>
+          <p className="auth-sub">
+            Your analyzed plans live in one private workspace, locked to your account.
+            The Guardian tokenizes every document before any AI sees it.
           </p>
-          <div className="security-stack">
-            <span>Guardian tokenization before AI</span>
-            <span>Row-level security per account</span>
-            <span>Delete a report and its data for good</span>
-          </div>
-          <div className="auth-orbit" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-        </section>
 
-        <form className="auth-card" onSubmit={handleSubmit}>
-          <div className="auth-card-header">
-            <span className="brand-pulse" />
-            <div>
-              <strong>{isSignup ? 'Create your account' : 'Enter ResilienceHub'}</strong>
-              <small>No raw document leaves your browser.</small>
+          <form className="auth-form" onSubmit={handleSubmit}>
+            {isSignup && (
+              <div className="field">
+                <label>Name</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+              </div>
+            )}
+            <div className="field">
+              <label>Email</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" />
             </div>
-          </div>
+            <div className="field">
+              <label>Password</label>
+              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" type="password" autoComplete={isSignup ? 'new-password' : 'current-password'} />
+            </div>
 
-          {isSignup && (
-            <label>Name
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-            </label>
-          )}
-          <label>Email
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" />
-          </label>
-          <label>Password
-            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" type="password" autoComplete={isSignup ? 'new-password' : 'current-password'} />
-          </label>
+            {error && <div className="auth-msg error">{error}</div>}
+            {notice && <div className="auth-msg notice">{notice}</div>}
 
-          {error && <div className="inline-error">{error}</div>}
-          {notice && <div className="inline-notice">{notice}</div>}
+            <button className="submit-btn" disabled={!canContinue || busy}>
+              {busy ? 'Working…' : isSignup ? 'Create account →' : 'Sign in →'}
+            </button>
+          </form>
 
-          <button disabled={!canContinue || busy}>
-            {busy ? 'Working…' : isSignup ? 'Create account' : 'Sign in'}
-          </button>
-
-          <p>
+          <p className="auth-switch">
             {isSignup ? 'Already have an account? ' : "Don't have an account? "}
             <button
               type="button"
-              className="link-button"
+              className="switch-link"
               onClick={() => { setMode(isSignup ? 'signin' : 'signup'); setError(''); setNotice(''); }}
             >
               {isSignup ? 'Sign in' : 'Create one'}
             </button>
           </p>
-        </form>
+        </div>
       </main>
     </div>
   );
@@ -134,12 +119,12 @@ export default function AuthGate({ onBack }) {
 export function ProductNav({ onBack, account, onLogout }) {
   return (
     <nav className="product-nav">
-      <button className="ghost-button" onClick={onBack}>Back</button>
-      <div className="product-brand"><span className="brand-pulse" /><strong>ResilienceHub</strong></div>
+      <button className="ghost-button" onClick={onBack}>← Back</button>
+      <div className="product-brand"><span className="brand-pulse" />Beacon Atlas</div>
       {account ? (
         <div className="account-pill"><span>{account.name}</span><button onClick={onLogout}>Sign out</button></div>
       ) : (
-        <span className="privacy-pill">PII never leaves your device</span>
+        <span className="privacy-pill">Tokenized before any AI sees it</span>
       )}
     </nav>
   );

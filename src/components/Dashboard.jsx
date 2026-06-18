@@ -21,6 +21,9 @@ export default function Dashboard({ account, onAnalyze, onBack, onLogout, onOpen
   const [reportsBusy, setReportsBusy] = useState(true);
   const fileInput = useRef(null);
 
+  const pipeline = useMemo(() => PIPELINES.find((item) => item.id === selectedPipeline) ?? PIPELINES.at(-1), [selectedPipeline]);
+  const selectedGmail = gmailSamples.find((item) => item.id === selectedEmail) ?? gmailSamples[0];
+
   useEffect(() => {
     let active = true;
     listReports()
@@ -37,13 +40,10 @@ export default function Dashboard({ account, onAnalyze, onBack, onLogout, onOpen
     try {
       await deleteReport(id);
     } catch (err) {
-      setReports(previous); // restore on failure
+      setReports(previous);
       setError('Could not delete that report. Please try again.');
     }
   }
-
-  const pipeline = useMemo(() => PIPELINES.find((item) => item.id === selectedPipeline) ?? PIPELINES.at(-1), [selectedPipeline]);
-  const selectedGmail = gmailSamples.find((item) => item.id === selectedEmail) ?? gmailSamples[0];
 
   async function handleFile(file) {
     if (!file) return;
@@ -76,116 +76,104 @@ export default function Dashboard({ account, onAnalyze, onBack, onLogout, onOpen
   }
 
   return (
-    <div className="product-shell dashboard-shell">
+    <div className="product-shell">
       <ProductNav account={account} onBack={onBack} onLogout={onLogout} />
-      <main className="dashboard-grid">
-        <section className="pipeline-column">
-          <div className="dashboard-heading">
-            <span className="mono-kicker">Choose your crisis pipeline</span>
-            <h1>Pick the specialist first. Use Common Bot when nothing fits.</h1>
-          </div>
 
-          <button className={`gmail-link-button ${gmailConnected ? 'connected' : ''}`} onClick={() => setGmailConnected(true)}>
-            <span className="brand-pulse" />
-            <strong>{gmailConnected ? 'Gmail linked for demo' : 'Link Gmail'}</strong>
-            <small>{gmailConnected ? 'Inbox samples unlocked' : 'Connect inbox review separately'}</small>
-          </button>
+      <main className="dash-body">
+        <header>
+          <span className="mono-kicker">Specialized crisis pipelines</span>
+          <h1 className="display dash-title">Turn the document into a plan.</h1>
+          <p className="dash-sub">
+            Pick the navigator that fits, paste or upload the document, and get a calm,
+            structured set of next steps — with deadlines, risks, and who can help.
+          </p>
+        </header>
 
-          <div className="pipeline-list">
-            {PIPELINES.map((item) => (
-              <button key={item.id} className={`pipeline-row ${item.id === selectedPipeline ? 'active' : ''}`} style={{ '--accent': item.accent }} onClick={() => setSelectedPipeline(item.id)}>
-                <span className="pipeline-orb" />
-                <span><strong>{item.label}</strong><small>{item.title}</small></span>
-              </button>
-            ))}
-          </div>
-        </section>
+        {/* Pipeline picker — plain text, underline for the active one */}
+        <div className="pipe-picker">
+          {PIPELINES.map((item) => (
+            <button
+              key={item.id}
+              className={`pipe-chip ${item.id === selectedPipeline ? 'active' : ''}`}
+              style={{ '--accent': item.accent }}
+              onClick={() => setSelectedPipeline(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
-        <section className="work-panel">
-          <div className="dashboard-topline">
-            <div>
-              <span className="mono-kicker">Account workspace</span>
-              <strong>{account.name}'s action room</strong>
+        <p className="pipe-blurb">
+          <span className="pipe-dot" style={{ '--accent': pipeline.accent }} />
+          <span><strong style={{ color: '#eef1f7', fontWeight: 600 }}>{pipeline.title}</strong> — {pipeline.description}</span>
+        </p>
+
+        {/* Source tabs */}
+        <div className="tab-row">
+          <button className={inputMode === 'document' ? 'active' : ''} onClick={() => setInputMode('document')}>Document</button>
+          <button className={inputMode === 'gmail' ? 'active' : ''} onClick={() => setInputMode('gmail')}>Gmail reader</button>
+        </div>
+
+        {inputMode === 'document' ? (
+          <div className="doc-input">
+            <textarea
+              className="bare-textarea"
+              value={text}
+              onChange={(e) => { setText(e.target.value); setError(''); }}
+              placeholder="Paste the notice, contract, discharge instructions, school letter, or PDF-extracted text here…"
+            />
+            <div className="doc-actions">
+              <label className="file-link">
+                {fileName || 'Upload PDF / text file'}
+                <input ref={fileInput} type="file" accept=".pdf,.txt,.md,application/pdf,text/plain" onChange={(e) => handleFile(e.target.files?.[0])} />
+              </label>
+              <button className="primary-action" onClick={submitText}>Analyze with {pipeline.title} →</button>
             </div>
-            <span>{gmailConnected ? 'Gmail linked' : 'Gmail not linked'}</span>
           </div>
-
-          <div className="selected-pipeline" style={{ '--accent': pipeline.accent }}>
-            <span className="pipeline-orb" />
-            <div>
-              <span className="mono-kicker">{pipeline.label}</span>
-              <h2>{pipeline.title}</h2>
-              <p>{pipeline.description}</p>
-              <div className="example-chips">{pipeline.examples.map((item) => <span key={item}>{item}</span>)}</div>
-            </div>
-          </div>
-
-          <div className="input-tabs">
-            <button className={inputMode === 'document' ? 'active' : ''} onClick={() => setInputMode('document')}>Document upload</button>
-            <button className={inputMode === 'gmail' ? 'active' : ''} onClick={() => setInputMode('gmail')}>Gmail reader</button>
-          </div>
-
-          {inputMode === 'document' ? (
-            <section className="input-card document-card">
-              <div className="drop-line" onClick={() => fileInput.current?.click()}>
-                <input ref={fileInput} type="file" accept=".pdf,.txt,.md,application/pdf,text/plain" onChange={(event) => handleFile(event.target.files?.[0])} />
-                <strong>{fileName || 'Upload a PDF or text document'}</strong>
-                <span>or paste the document text directly below</span>
-              </div>
-              <textarea value={text} onChange={(event) => { setText(event.target.value); setError(''); }} placeholder="Paste the document, notice, contract, discharge instructions, school letter, or PDF-extracted text here..." />
-              <button className="primary-action" onClick={submitText}>Analyze with {pipeline.title}</button>
-            </section>
-          ) : (
-            <section className="input-card gmail-card">
-              <div className="gmail-connect">
-                <div><strong>Gmail Reader</strong><p>Use the separate Link Gmail button to connect inbox review. This zip demo uses safe sample emails until Google OAuth credentials are added.</p></div>
-                <button onClick={() => setGmailConnected(true)}>{gmailConnected ? 'Gmail linked' : 'Link Gmail'}</button>
-              </div>
-              {gmailConnected ? (
-                <>
-                  <div className="gmail-list">
-                    {gmailSamples.map((email) => (
-                      <button key={email.id} className={selectedEmail === email.id ? 'active' : ''} onClick={() => setSelectedEmail(email.id)}>
-                        <strong>{email.subject}</strong><span>{email.from}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="email-preview"><span>{selectedGmail.from}</span><strong>{selectedGmail.subject}</strong><p>{selectedGmail.body}</p></div>
-                  <button className="primary-action" onClick={submitGmail}>Analyze selected Gmail</button>
-                </>
-              ) : (
-                <div className="gmail-empty"><strong>Gmail is not linked yet.</strong><span>Click Link Gmail to unlock inbox review. No extension is being built in this version.</span></div>
-              )}
-            </section>
-          )}
-
-          {error && <div className="inline-error">{error}</div>}
-
-          {(reportsBusy || reports.length > 0) && (
-            <section className="reports-panel">
-              <div className="reports-head">
-                <span className="mono-kicker">Your saved reports</span>
-                {!reportsBusy && <span>{reports.length}</span>}
-              </div>
-              {reportsBusy ? (
-                <p className="reports-empty">Loading your reports…</p>
-              ) : (
-                <div className="reports-list">
-                  {reports.map((r) => (
-                    <div key={r.id} className="report-row" onClick={() => onOpenReport?.(r)}>
-                      <span className={`report-orb urgency-${r.urgency || 'medium'}`} />
-                      <span className="report-main">
-                        <strong>{r.source || 'Untitled document'}</strong>
-                        <small>{(PIPELINE_LABELS[r.pipeline_type] || r.pipeline_type)} · {new Date(r.created_at).toLocaleDateString()}</small>
-                      </span>
-                      <button className="report-del" onClick={(e) => removeReport(r.id, e)}>Delete</button>
-                    </div>
+        ) : (
+          <div className="gmail-min">
+            {!gmailConnected ? (
+              <button className="primary-action" onClick={() => setGmailConnected(true)}>Link Gmail (demo) →</button>
+            ) : (
+              <>
+                <ul className="gmail-rows">
+                  {gmailSamples.map((email) => (
+                    <li key={email.id} className={selectedEmail === email.id ? 'active' : ''} onClick={() => setSelectedEmail(email.id)}>
+                      <strong>{email.subject}</strong>
+                      <span>{email.from}</span>
+                    </li>
                   ))}
-                </div>
-              )}
-            </section>
-          )}
-        </section>
+                </ul>
+                <p className="email-body">{selectedGmail.body}</p>
+                <button className="primary-action" onClick={submitGmail}>Analyze selected email →</button>
+              </>
+            )}
+          </div>
+        )}
+
+        {error && <p className="dash-error">{error}</p>}
+
+        {(reportsBusy || reports.length > 0) && (
+          <section className="saved">
+            <span className="mono-kicker">Your saved reports</span>
+            {reportsBusy ? (
+              <p className="muted-line">Loading your reports…</p>
+            ) : (
+              <ul className="saved-list">
+                {reports.map((r) => (
+                  <li key={r.id} className="saved-row" onClick={() => onOpenReport?.(r)}>
+                    <span className={`report-orb urgency-${r.urgency || 'medium'}`} />
+                    <span className="saved-main">
+                      <strong>{r.source || 'Untitled document'}</strong>
+                      <small>{(PIPELINE_LABELS[r.pipeline_type] || r.pipeline_type)} · {new Date(r.created_at).toLocaleDateString()}</small>
+                    </span>
+                    <button className="del-link" onClick={(e) => removeReport(r.id, e)}>Delete</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );
