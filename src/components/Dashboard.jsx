@@ -89,16 +89,20 @@ export default function Dashboard({ account, onAnalyze, onBack, onLogout, onOpen
           </p>
         </header>
 
-        {/* Pipeline picker — plain text, underline for the active one */}
-        <div className="pipe-picker">
+        {/* Pipeline picker — one rectangular button per pipeline, in a spaced grid */}
+        <div className="pipe-grid">
           {PIPELINES.map((item) => (
             <button
               key={item.id}
-              className={`pipe-chip ${item.id === selectedPipeline ? 'active' : ''}`}
+              type="button"
+              className={`pipe-card ${item.id === selectedPipeline ? 'active' : ''}`}
               style={{ '--accent': item.accent }}
               onClick={() => setSelectedPipeline(item.id)}
+              aria-pressed={item.id === selectedPipeline}
             >
-              {item.label}
+              <span className="pipe-card-orb" />
+              <span className="pipe-card-label">{item.label}</span>
+              <span className="pipe-card-title">{item.title}</span>
             </button>
           ))}
         </div>
