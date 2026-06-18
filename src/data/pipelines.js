@@ -6,7 +6,7 @@ export const PIPELINES = [
   { id: 'financial_aid', label: 'Financial Assistance Pipeline', title: 'Benefits & Aid Navigator', description: 'Grants, benefits, insurance claims, aid applications, and eligibility documents.', examples: ['benefits notice', 'grant packet', 'insurance claim', 'aid denial'], accent: '#facc15' },
   { id: 'housing', label: 'Housing Pipeline', title: 'Housing Stability Navigator', description: 'Lease notices, rent assistance, housing benefits, landlord letters, and utility warnings.', examples: ['lease notice', 'rent arrears', 'housing voucher', 'utility shutoff'], accent: '#38bdf8' },
   { id: 'employment', label: 'Employment Pipeline', title: 'Workplace Rights Navigator', description: 'Contracts, HR policies, severance, termination notices, and workplace documentation.', examples: ['termination letter', 'severance offer', 'HR policy', 'workplace complaint'], accent: '#f472b6' },
-  { id: 'common', label: 'Common Bot', title: 'General Crisis Reader', description: 'Use this when no specialized pipeline matches. It still extracts what matters, risks, next steps, and help.', examples: ['unknown notice', 'mixed document', 'email thread', 'anything else'], accent: '#c4d0ff' },
+  { id: 'common', label: 'General Pipeline', title: 'General Crisis Reader', description: 'Use this when no specialized pipeline matches. It still extracts what matters, risks, next steps, and help.', examples: ['unknown notice', 'mixed document', 'email thread', 'anything else'], accent: '#c4d0ff' },
 ];
 
 export const PIPELINE_LABELS = Object.fromEntries(PIPELINES.map((pipeline) => [pipeline.id, pipeline.title]));
