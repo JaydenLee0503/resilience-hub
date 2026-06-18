@@ -58,15 +58,23 @@ async function loadPipelines() {
     await import('../src/agents/pipelines/immigration.js');
   const { SYSTEM_PROMPT: medicalPrompt, enrichResponse: medicalEnrich } =
     await import('../src/agents/pipelines/medical.js');
+  const { SYSTEM_PROMPT: legalPrompt, enrichResponse: legalEnrich } =
+    await import('../src/agents/pipelines/legal.js');
+  const { SYSTEM_PROMPT: housingPrompt, enrichResponse: housingEnrich } =
+    await import('../src/agents/pipelines/housing.js');
 
   const PIPELINE_PROMPTS = {
     immigration: immigrationPrompt,
     medical: medicalPrompt,
+    legal: legalPrompt,
+    housing: housingPrompt,
   };
 
   const PIPELINE_ENRICH = {
     immigration: immigrationEnrich,
     medical: medicalEnrich,
+    legal: legalEnrich,
+    housing: housingEnrich,
   };
 
   const FALLBACK_PROMPT = `
