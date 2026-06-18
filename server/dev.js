@@ -164,7 +164,8 @@ async function handleRequest(req, res, pipelines) {
       body: JSON.stringify({
         model: FEATHERLESS_MODEL,
         temperature: 0.1,
-        max_tokens: 1500, // <-- CRITICAL: Tells Featherless to only reserve 1500 tokens for the output JSON
+        max_tokens: 2200,
+        response_format: { type: 'json_object' },
         messages: [
           { 
             role: 'system', 
@@ -172,7 +173,7 @@ async function handleRequest(req, res, pipelines) {
           },
           { 
             role: 'user', 
-            content: `Analyze this document:\n\n${truncatedText.trim()}` 
+            content: `Selected pipeline_type: ${pipeline_type}\nReturn that exact pipeline_type unless the document is clearly a different supported pipeline.\n\nAnalyze this tokenized document:\n\n${truncatedText.trim()}` 
           },
         ],
       }),
@@ -196,30 +197,70 @@ async function handleRequest(req, res, pipelines) {
   const data = await featherlessRes.json();
   const rawText = data.choices?.[0]?.message?.content ?? '';
   
-  const fence = '```';
-  const clean = rawText
-    .replace(new RegExp('^' + fence + '(?:json)?\\s*', 'm'), '')
-    .replace(new RegExp('\\s*' + fence + '\\s*$', 'm'), '')
-    .trim();
-
-  let parsed;
-  try {
-    parsed = JSON.parse(clean);
-  } catch {
-    console.error('[analyze] JSON parse failed. Raw:', rawText.slice(0, 300));
-    res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
-    res.end(JSON.stringify({ error: 'AI returned malformed output. Please try again.' }));
-    return;
-  }
-
-  parsed.pipeline_type = parsed.pipeline_type || pipeline_type;
+  const parsed = parseModelJson(rawText, pipeline_type, tokenizedText);
+  parsed.pipeline_type = normalizePipelineType(parsed.pipeline_type, pipeline_type);
 
   // ── Step 5: Enrich ────────────────────────────────────────────────────────
   const enrich = PIPELINE_ENRICH[pipeline_type];
-  const final = enrich ? enrich(parsed) : parsed;
+  const final = normalizeAnalysis(enrich ? enrich(parsed) : parsed, pipeline_type, tokenizedText);
 
   res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
   res.end(JSON.stringify(final));
+}
+
+function parseModelJson(rawText, pipelineType, tokenizedText) {
+  const fence = '```';
+  const clean = String(rawText || '')
+    .replace(new RegExp('^' + fence + '(?:json)?\\s*', 'm'), '')
+    .replace(new RegExp('\\s*' + fence + '\\s*$', 'm'), '')
+    .trim();
+  const candidates = [clean, extractJsonObject(clean)].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // try next candidate
+    }
+  }
+
+  console.error('[analyze] JSON parse failed. Falling back to demo report. Raw:', String(rawText || '').slice(0, 300));
+  return {
+    ...demoAnalysis(tokenizedText, pipelineType),
+    plain_language_summary: 'The AI model returned malformed text, so ResilienceHub generated a safe fallback report from the detected pipeline and tokens. Try a stronger JSON-following model later for better detail.',
+  };
+}
+
+function extractJsonObject(text) {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return '';
+  return text.slice(start, end + 1);
+}
+
+function normalizePipelineType(value, fallback) {
+  const valid = new Set(['immigration', 'medical', 'school', 'legal', 'financial_aid', 'housing', 'employment', 'common']);
+  return valid.has(value) ? value : (valid.has(fallback) ? fallback : 'common');
+}
+
+function normalizeAnalysis(value, pipelineType, tokenizedText) {
+  const fallback = demoAnalysis(tokenizedText, pipelineType);
+  const normalized = {
+    ...fallback,
+    ...value,
+    pipeline_type: normalizePipelineType(value?.pipeline_type, pipelineType),
+    urgency: ['low', 'medium', 'high', 'critical'].includes(value?.urgency) ? value.urgency : fallback.urgency,
+  };
+  for (const key of ['what_matters', 'what_happens_if_ignored', 'what_to_do_next', 'who_can_help', 'checklist', 'deadlines', 'questions_to_ask']) {
+    if (!Array.isArray(normalized[key])) normalized[key] = fallback[key];
+  }
+  if (typeof normalized.plain_language_summary !== 'string' || !normalized.plain_language_summary.trim()) {
+    normalized.plain_language_summary = fallback.plain_language_summary;
+  }
+  if (typeof normalized.disclaimer !== 'string' || !normalized.disclaimer.trim()) {
+    normalized.disclaimer = fallback.disclaimer;
+  }
+  return normalized;
 }
 
 function auditRawPii(text) {

@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host localhost",
     "dev:server": "node server/dev.js",
     "dev:all": "concurrently -n vite,server -c cyan,yellow \"npm run dev\" \"npm run dev:server\"",
-    "build": "vite build",
+    "build": "vite build --outDir dist --emptyOutDir",
     "preview": "vite preview"
   },
   "dependencies": {

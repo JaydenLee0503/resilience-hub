@@ -11,7 +11,7 @@
  * so its scroll animations don't reset when returning from the product.
  */
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import beaconSource from '../src/Beacon Atlas ver 1.0.1.dc.html?raw';
 
 import CrisisActionRoom from './components/CrisisActionRoom';
@@ -69,6 +69,28 @@ function installHoverStyles(root) {
       element.removeEventListener('focus', show);
       element.removeEventListener('blur', hide);
     };
+  });
+}
+
+function revealBeaconContent(root) {
+  root.querySelectorAll('[data-reveal]').forEach((el) => {
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+  });
+  root.querySelectorAll('[data-tcard]').forEach((el) => {
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+  });
+  root.querySelectorAll('[data-word]').forEach((el) => {
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+  });
+  ['[data-global-text]', '[data-global-stats]', '[data-clarity-panel]', '[data-clarity-tag]', '[data-tconn]'].forEach((selector) => {
+    const el = root.querySelector(selector);
+    if (el) {
+      el.style.opacity = '1';
+      el.style.transform = selector === '[data-clarity-tag]' ? 'translateX(-50%)' : 'none';
+    }
   });
 }
 
@@ -222,11 +244,13 @@ function makeSmoothScroller() {
   };
 }
 
-function useBeaconAnimations(hostRef) {
+function useBeaconAnimations(hostRef, active = true) {
   useEffect(() => {
+    if (!active) return undefined;
     const host = hostRef.current;
     const root = host?.querySelector('[data-beacon-root]');
     if (!root) return undefined;
+    const revealTimer = window.setTimeout(() => revealBeaconContent(root), 120);
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     const lerp = (start, end, amount) => start + (end - start) * amount;
@@ -529,17 +553,14 @@ function useBeaconAnimations(hostRef) {
     };
 
     const showStaticState = () => {
-      root.querySelectorAll('[data-reveal]').forEach((el) => { el.style.opacity='1'; el.style.transform='none'; });
-      cache.tcards.forEach((card) => { card.style.opacity='1'; card.style.transform='none'; });
-      cache.words.forEach((word) => { word.style.opacity='1'; });
-      if (cache.globalText)  { cache.globalText.style.opacity='1';  cache.globalText.style.transform='none'; }
-      if (cache.globalStats) { cache.globalStats.style.opacity='1'; cache.globalStats.style.transform='none'; }
+      revealBeaconContent(root);
     };
 
     if (reduce) {
       showStaticState();
       safeTick();
       return () => {
+        window.clearTimeout(revealTimer);
         globe?.stop();
         aurora?.stop();
         jumpLinks.forEach((link) => link.removeEventListener('click', onJump));
@@ -556,13 +577,14 @@ function useBeaconAnimations(hostRef) {
     return () => {
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
+      window.clearTimeout(revealTimer);
       settleTimers.forEach((timer) => window.clearTimeout(timer));
       globe?.stop();
       aurora?.stop();
       jumpLinks.forEach((link) => link.removeEventListener('click', onJump));
       hoverCleanups.forEach((cleanup) => cleanup());
     };
-  }, [hostRef]);
+  }, [hostRef, active]);
 }
 
 // ─── Analyzing state ────────────────────────────────────────────────────────
@@ -579,56 +601,61 @@ function AnalyzingState({ step = 0 }) {
     <div
       style={{
         minHeight: '100vh',
-        background: '#06070e',
+        background: 'radial-gradient(circle at 22% 12%, rgba(91,140,255,.24), transparent 30%), radial-gradient(circle at 88% 0%, rgba(160,107,255,.18), transparent 28%), #06070e',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 40,
-        fontFamily: "'Hanken Grotesk', 'D-DIN Bold', system-ui, sans-serif",
+        gap: 34,
+        fontFamily: "'Archivo', 'D-DIN Bold', system-ui, sans-serif",
         color: '#eef1f7',
         padding: 24,
       }}
     >
-      {/* Animated ring */}
-      <div style={{ position: 'relative', width: 72, height: 72 }}>
+      <div style={{ position: 'relative', width: 116, height: 116 }}>
         <div
           style={{
             position: 'absolute',
             inset: 0,
             borderRadius: '50%',
-            border: '2px solid rgba(91,140,255,.15)',
+            border: '1px solid rgba(255,255,255,.14)',
+            boxShadow: '0 0 70px rgba(91,140,255,.25)',
           }}
         />
         <div
           style={{
             position: 'absolute',
-            inset: 0,
+            inset: 18,
             borderRadius: '50%',
             border: '2px solid transparent',
             borderTopColor: '#5b8cff',
+            borderRightColor: '#a06bff',
             animation: 'spin 1s linear infinite',
           }}
         />
+        <div style={{ position:'absolute', inset:42, borderRadius:'50%', background:'linear-gradient(135deg,#5b8cff,#a06bff)', boxShadow:'0 0 24px rgba(91,140,255,.9)' }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
 
       <div style={{ textAlign: 'center', maxWidth: 420 }}>
-        <p style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 600 }}>
-          Analyzing your document
+        <span style={{ display:'block', marginBottom:12, color:'#5b8cff', fontFamily:"'IBM Plex Mono',monospace", fontSize:12, letterSpacing:'.18em', textTransform:'uppercase' }}>
+          Secure pipeline in motion
+        </span>
+        <p style={{ margin: '0 0 8px', fontSize: 'clamp(34px,5vw,58px)', lineHeight: .98, fontWeight: 900, textTransform:'uppercase', letterSpacing:'.01em' }}>
+          Analyzing your document.
         </p>
-        <p style={{ margin: 0, fontSize: 14, color: '#5a637c' }}>
+        <p style={{ margin: 0, fontSize: 15, color: '#98a2bb', lineHeight:1.6 }}>
           {STEPS[Math.min(step, STEPS.length - 1)].sub}
         </p>
       </div>
 
-      {/* Step indicators */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 360 }}>
+      <div style={{ display: 'grid', gap: 10, width: '100%', maxWidth: 520, padding:18, border:'1px solid rgba(255,255,255,.09)', borderRadius:22, background:'rgba(255,255,255,.035)', boxShadow:'0 24px 70px rgba(0,0,0,.22)' }}>
         {STEPS.map((s, i) => (
           <div
             key={s.label}
             style={{
-              display: 'flex',
+              display: 'grid',
+              gridTemplateColumns:'24px 1fr',
               alignItems: 'center',
               gap: 12,
               opacity: i <= step ? 1 : 0.25,
@@ -675,7 +702,7 @@ export default function App() {
 
   const hostRef = useRef(null);
   const template = useMemo(buildBeaconTemplate, []);
-  useBeaconAnimations(hostRef);
+  useBeaconAnimations(hostRef, view === 'landing');
 
   // Wire landing page "Try" buttons to account entry.
   useEffect(() => {

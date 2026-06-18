@@ -171,14 +171,16 @@ body {
 .dashboard-heading h1,
 .selected-pipeline h2 {
   margin: 0;
-  font-family: "Instrument Serif", Georgia, serif;
-  font-weight: 400;
-  line-height: 1.02;
+  font-family: "Archivo", "D-DIN Bold", "Arial Narrow", Arial, sans-serif;
+  font-weight: 900;
+  line-height: 0.96;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .auth-copy h1 {
   max-width: 680px;
-  font-size: clamp(42px, 7vw, 82px);
+  font-size: clamp(42px, 6.7vw, 78px);
 }
 
 .auth-copy p,
@@ -230,8 +232,69 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px;
+  padding: 26px;
+  position: relative;
+  overflow: hidden;
 }
+
+.auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(91,140,255,.16), transparent 38%),
+    radial-gradient(circle at 90% 0%, rgba(160,107,255,.18), transparent 34%);
+}
+
+.auth-card > * {
+  position: relative;
+}
+
+.auth-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 0 10px;
+}
+
+.auth-card-header strong,
+.dashboard-topline strong {
+  display: block;
+  font-family: "Archivo", "D-DIN Bold", sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.auth-card-header small {
+  display: block;
+  margin-top: 3px;
+  color: #98a2bb;
+}
+
+.auth-orbit {
+  position: relative;
+  width: min(420px, 80vw);
+  height: 170px;
+  margin-top: 28px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, rgba(91,140,255,.15), transparent 54%);
+}
+
+.auth-orbit span {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #5b8cff, #a06bff);
+  box-shadow: 0 0 18px rgba(91,140,255,.9);
+}
+
+.auth-orbit span:nth-child(1) { left: 12%; top: 48%; }
+.auth-orbit span:nth-child(2) { left: 48%; top: 18%; }
+.auth-orbit span:nth-child(3) { right: 12%; bottom: 28%; }
 
 .auth-card label {
   display: grid;
@@ -274,9 +337,9 @@ body {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 330px minmax(0, 1fr);
-  gap: 18px;
-  padding: 22px 0 64px;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 20px;
+  padding: 24px 0 72px;
 }
 
 .pipeline-column,
@@ -285,12 +348,12 @@ body {
 }
 
 .dashboard-heading h1 {
-  font-size: 32px;
+  font-size: clamp(30px, 3vw, 42px);
 }
 
 .pipeline-list {
   display: grid;
-  gap: 9px;
+  gap: 10px;
   margin-top: 18px;
 }
 
@@ -301,18 +364,20 @@ body {
   align-items: center;
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 16px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 14px;
   color: #eef1f7;
   text-align: left;
-  background: rgba(255, 255, 255, 0.025);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
   cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
 }
 
 .pipeline-row.active,
 .pipeline-row:hover {
   border-color: color-mix(in srgb, var(--accent), transparent 50%);
   background: color-mix(in srgb, var(--accent), transparent 90%);
+  transform: translateX(3px);
 }
 
 .pipeline-row .pipeline-orb,
@@ -327,18 +392,83 @@ body {
   margin-top: 3px;
 }
 
+.pipeline-row strong {
+  font-family: "Archivo", "D-DIN Bold", sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+.gmail-link-button {
+  display: grid;
+  grid-template-columns: 12px minmax(0,1fr);
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  margin-top: 18px;
+  border: 1px solid rgba(91,140,255,.26);
+  border-radius: 10px;
+  padding: 14px;
+  color: #eef1f7;
+  text-align: left;
+  background: rgba(91,140,255,.08);
+  cursor: pointer;
+}
+
+.gmail-link-button.connected {
+  border-color: rgba(74,222,128,.34);
+  background: rgba(74,222,128,.08);
+}
+
+.gmail-link-button strong,
+.gmail-link-button small {
+  display: block;
+}
+
+.gmail-link-button small {
+  margin-top: 3px;
+  color: #98a2bb;
+}
+
+.dashboard-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  background: rgba(0,0,0,.16);
+}
+
+.dashboard-topline .mono-kicker {
+  margin-bottom: 4px;
+}
+
+.dashboard-topline > span {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #98a2bb;
+  font-size: 12px;
+}
+
 .selected-pipeline {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 14px;
-  padding: 18px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 16px;
+  padding: clamp(18px, 3vw, 30px);
   border: 1px solid color-mix(in srgb, var(--accent), transparent 68%);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--accent), transparent 93%);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--accent), transparent 78%), transparent 36%),
+    color-mix(in srgb, var(--accent), transparent 94%);
 }
 
 .selected-pipeline h2 {
-  font-size: clamp(34px, 5vw, 56px);
+  font-size: clamp(38px, 6vw, 74px);
 }
 
 .example-chips {
@@ -381,10 +511,12 @@ body {
   display: grid;
   gap: 4px;
   place-items: center;
-  min-height: 94px;
+  min-height: 118px;
   border: 1px dashed rgba(91, 140, 255, 0.32);
-  border-radius: 16px;
-  background: rgba(91, 140, 255, 0.06);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(91,140,255,.11), rgba(160,107,255,.05)),
+    rgba(91, 140, 255, 0.04);
   cursor: pointer;
 }
 
@@ -398,7 +530,7 @@ body {
 
 .input-card textarea {
   width: 100%;
-  min-height: 220px;
+  min-height: 240px;
   resize: vertical;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 16px;
@@ -466,6 +598,22 @@ body {
 
 .email-preview p {
   margin: 8px 0 0;
+}
+
+.gmail-empty {
+  display: grid;
+  gap: 6px;
+  place-items: center;
+  min-height: 150px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  background: rgba(0,0,0,.16);
+  text-align: center;
+  color: #d8dff0;
+}
+
+.gmail-empty span {
+  color: #98a2bb;
 }
 
 .inline-error {

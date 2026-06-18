@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 
 const ACCENT = 'rgba(91,140,255,';
 const ACCENT_B = 'rgba(160,107,255,';

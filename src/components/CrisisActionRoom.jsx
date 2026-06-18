@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { rehydrateDeep } from '../agents/rehydrate';
 import { PIPELINE_LABELS } from '../agents/pipelines/classifier';
 import { downloadPdfReport, downloadTextReport } from '../lib/reportExport';
