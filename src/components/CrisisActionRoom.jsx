@@ -82,20 +82,22 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
     <div className="product-shell report-shell" style={{ minHeight: '100vh' }}>
 
       {/* ── Sticky nav ── */}
-      <nav className="product-nav">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <nav className="product-nav report-product-nav">
+        <div className="nav-side nav-left">
+          <button className="report-nav-btn accent" onClick={onDashboard || onReset}>Dashboard</button>
+        </div>
+        <div className="product-brand report-product-brand">
           <span className="brand-pulse" />
-          <span className="display" style={{ fontSize: 19 }}>Beacon Atlas</span>
+          <span>Beacon Atlas</span>
           {d.pipeline_type && (
-            <span className="report-mono" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '4px 9px', border: '1px solid rgba(91,140,255,0.25)', color: '#5b8cff', marginLeft: 6 }}>
+            <span className="report-mono report-pipeline-chip">
               {PIPELINE_LABELS[d.pipeline_type] ?? d.pipeline_type}
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="nav-side nav-right report-nav-actions">
           <button className="report-nav-btn" onClick={() => downloadTextReport(d)}>Download TXT</button>
           <button className="report-nav-btn" onClick={() => downloadPdfReport(d)}>Download PDF</button>
-          <button className="report-nav-btn accent" onClick={onDashboard || onReset}>Dashboard</button>
         </div>
       </nav>
 

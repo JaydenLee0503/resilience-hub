@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Beacon Atlas PDF Sender</title>
+    <style>
+      body {
+        width: 310px;
+        margin: 0;
+        padding: 16px;
+        color: #eef1f7;
+        background: #06070e;
+        font: 14px/1.45 Arial, sans-serif;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      p {
+        margin: 0 0 14px;
+        color: #98a2bb;
+      }
+      button {
+        width: 100%;
+        border: 1px solid rgba(91, 140, 255, 0.55);
+        border-radius: 6px;
+        background: rgba(91, 140, 255, 0.14);
+        color: #eef1f7;
+        padding: 11px 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      #status {
+        margin-top: 12px;
+        min-height: 36px;
+        color: #c4d0ff;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Beacon Atlas</h1>
+    <p>Send selectable text from this PDF or page into your local dashboard.</p>
+    <button id="send">Send current tab</button>
+    <div id="status" role="status"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

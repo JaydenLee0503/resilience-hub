@@ -703,18 +703,39 @@ function toAccount(user) {
   };
 }
 
+function readExtensionImport() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const text = params.get('extensionText');
+  if (!text) return null;
+
+  const source = params.get('extensionSource') || 'Chrome PDF import';
+  params.delete('extensionText');
+  params.delete('extensionSource');
+  const nextSearch = params.toString();
+  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+  window.history.replaceState({}, '', nextUrl);
+
+  return { text, source };
+}
+
 export default function App() {
   const [account, setAccount] = useState(null);
   const [view, setView] = useState('landing');
   const [analyzeStep, setAnalyzeStep] = useState(0);
   const [result, setResult] = useState(null);
   const [apiError, setApiError] = useState('');
+  const [extensionImport] = useState(readExtensionImport);
 
   const hostRef = useRef(null);
   const template = useMemo(buildBeaconTemplate, []);
   useBeaconAnimations(hostRef, view === 'landing');
 
   // ── Supabase auth session: hydrate on load + react to sign in/out ──────────
+  useEffect(() => {
+    if (extensionImport && !account) setView('login');
+  }, [extensionImport, account]);
+
   useEffect(() => {
     if (!supabase) return undefined;
     let active = true;
@@ -724,7 +745,7 @@ export default function App() {
       const user = data.session?.user ?? null;
       if (user) {
         setAccount(toAccount(user));
-        setView((v) => (v === 'landing' || v === 'login' ? 'dashboard' : v));
+        setView((v) => (v === 'landing' || v === 'login' || extensionImport ? 'dashboard' : v));
       }
     });
 
@@ -732,7 +753,7 @@ export default function App() {
       const user = session?.user ?? null;
       setAccount(toAccount(user));
       if (user) {
-        setView((v) => (v === 'landing' || v === 'login' ? 'dashboard' : v));
+        setView((v) => (v === 'landing' || v === 'login' || extensionImport ? 'dashboard' : v));
       } else {
         setResult(null);
         setView('landing');
@@ -740,7 +761,7 @@ export default function App() {
     });
 
     return () => { active = false; sub.subscription.unsubscribe(); };
-  }, []);
+  }, [extensionImport]);
 
   // Wire landing page "Try" buttons to account entry.
   useEffect(() => {
@@ -848,6 +869,8 @@ export default function App() {
           onLogout={handleLogout}
           onOpenReport={handleOpenReport}
           initialError={apiError}
+          initialText={extensionImport?.text || ''}
+          initialSource={extensionImport?.source || ''}
         />
       )}
 
