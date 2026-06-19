@@ -1,12 +1,39 @@
-import { useEffect, useMemo, useRef } from 'react';
+/**
+ * App.jsx — ResilienceHub
+ *
+ * State machine:
+ *   'landing'   → Beacon Atlas marketing page (existing template)
+ *   'upload'    → UploadZone (document input)
+ *   'analyzing' → Processing state (Guardian + Simplifier running)
+ *   'results'   → CrisisActionRoom (analysis output)
+ *
+ * The landing page stays mounted in all states (display:none when hidden)
+ * so its scroll animations don't reset when returning from the product.
+ */
+
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import beaconSource from '../src/Beacon Atlas ver 1.0.1.dc.html?raw';
+
+import CrisisActionRoom from './components/CrisisActionRoom';
+import AuthGate from './components/AuthGate';
+import Dashboard from './components/Dashboard';
+
+import { runGuardian } from './agents/guardian';
+import { runSimplifier } from './agents/simplifier';
+import { rehydrateDeep } from './agents/rehydrate';
+import { supabase } from './lib/supabaseClient';
+import { saveReport } from './lib/reports';
+
+// ─── Beacon Atlas template helpers (unchanged from original) ───────────────
 
 // The headline the .dc.html ships with as its default (see data-props in the file).
 const HEADLINE = 'Understand any document. Act in time.';
 
 function buildBeaconTemplate() {
   const style = beaconSource.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '';
-  const root = beaconSource.match(/<div ref="\{\{ rootRef \}\}"([^>]*)>([\s\S]*)<\/div>\s*<\/x-dc>/);
+  const root = beaconSource.match(
+    /<div ref="\{\{ rootRef \}\}"([^>]*)>([\s\S]*)<\/div>\s*<\/x-dc>/
+  );
 
   if (!root) {
     return {
@@ -44,6 +71,28 @@ function installHoverStyles(root) {
       element.removeEventListener('focus', show);
       element.removeEventListener('blur', hide);
     };
+  });
+}
+
+function revealBeaconContent(root) {
+  root.querySelectorAll('[data-reveal]').forEach((el) => {
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+  });
+  root.querySelectorAll('[data-tcard]').forEach((el) => {
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+  });
+  root.querySelectorAll('[data-word]').forEach((el) => {
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+  });
+  ['[data-global-text]', '[data-global-stats]', '[data-clarity-panel]', '[data-clarity-tag]', '[data-tconn]'].forEach((selector) => {
+    const el = root.querySelector(selector);
+    if (el) {
+      el.style.opacity = '1';
+      el.style.transform = selector === '[data-clarity-tag]' ? 'translateX(-50%)' : 'none';
+    }
   });
 }
 
@@ -197,11 +246,13 @@ function makeSmoothScroller() {
   };
 }
 
-function useBeaconAnimations(hostRef) {
+function useBeaconAnimations(hostRef, active = true) {
   useEffect(() => {
+    if (!active) return undefined;
     const host = hostRef.current;
     const root = host?.querySelector('[data-beacon-root]');
     if (!root) return undefined;
+    const revealTimer = window.setTimeout(() => revealBeaconContent(root), 120);
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     const lerp = (start, end, amount) => start + (end - start) * amount;
@@ -230,17 +281,14 @@ function useBeaconAnimations(hostRef) {
 
     const sceneProblem = (progress) => {
       const eased = 1 - Math.pow(1 - clamp(progress / 0.8, 0, 1), 3);
-
       cache.chips.forEach((chip) => {
         const from = (chip.getAttribute('data-from') || '0,0,0').split(',').map(Number);
         const amount = 1 - eased;
         chip.style.transform = `translate(${from[0] * amount}px,${from[1] * amount}px) rotate(${from[2] * amount}deg) scale(${lerp(0.92, 1, eased)})`;
       });
-
       if (cache.clarityPanel) {
         cache.clarityPanel.style.opacity = clamp((eased - 0.4) / 0.5, 0, 1) * 0.9;
       }
-
       if (cache.clarityTag) {
         const tagProgress = clamp((eased - 0.6) / 0.4, 0, 1);
         cache.clarityTag.style.opacity = tagProgress;
@@ -252,7 +300,6 @@ function useBeaconAnimations(hostRef) {
       const slide = clamp(progress / 0.22, 0, 1);
       if (cache.tdoc) cache.tdoc.style.transform = `translateX(${lerp(120, 0, slide)}px)`;
       if (cache.tconn) cache.tconn.style.opacity = clamp((progress - 0.18) / 0.12, 0, 1);
-
       cache.tcards.forEach((card, index) => {
         const start = 0.3 + index * 0.125;
         const local = clamp((progress - start) / 0.14, 0, 1);
@@ -265,7 +312,6 @@ function useBeaconAnimations(hostRef) {
     const scenePipelines = (progress) => {
       const track = cache.pipeTrack;
       if (!track) return;
-
       const maxOffset = track.scrollWidth - window.innerWidth + 40;
       const eased = clamp(progress, 0, 1);
       track.style.transform = `translateX(${-Math.max(0, maxOffset) * eased}px)`;
@@ -278,7 +324,6 @@ function useBeaconAnimations(hostRef) {
         cache.globalText.style.opacity = amount;
         cache.globalText.style.transform = `translateY(${(1 - amount) * 28}px)`;
       }
-
       if (cache.globalStats) {
         const amount = clamp((progress - 0.3) / 0.3, 0, 1);
         cache.globalStats.style.opacity = amount;
@@ -289,7 +334,6 @@ function useBeaconAnimations(hostRef) {
     const sceneMission = (progress) => {
       const words = cache.words;
       const count = words.length;
-
       words.forEach((word, index) => {
         const start = (index / count) * 0.62;
         const local = clamp((progress - start) / 0.16, 0, 1);
@@ -328,143 +372,96 @@ function useBeaconAnimations(hostRef) {
       };
 
       const nodes = [
-        [40.7, -74],
-        [51.5, -0.1],
-        [19.4, -99.1],
-        [28.6, 77.2],
-        [-23.5, -46.6],
-        [35.7, 139.7],
-        [-33.9, 18.4],
-        [1.3, 103.8],
-        [30, 31.2],
-        [48.8, 2.3],
-        [-1.3, 36.8],
-        [25, 55.3],
+        [40.7, -74], [51.5, -0.1], [19.4, -99.1], [28.6, 77.2],
+        [-23.5, -46.6], [35.7, 139.7], [-33.9, 18.4], [1.3, 103.8],
+        [30, 31.2], [48.8, 2.3], [-1.3, 36.8], [25, 55.3],
       ].map((node) => [node[0] * deg, node[1] * deg]);
-      const arcs = [[0, 1], [0, 4], [1, 8], [3, 7], [5, 9], [2, 0], [6, 10], [8, 3], [11, 5]];
+      const arcs = [[0,1],[0,4],[1,8],[3,7],[5,9],[2,0],[6,10],[8,3],[11,5]];
 
       const vec = (phi, lam) => [
-        Math.cos(phi) * Math.sin(lam),
-        Math.sin(phi),
-        Math.cos(phi) * Math.cos(lam),
+        Math.cos(phi) * Math.sin(lam), Math.sin(phi), Math.cos(phi) * Math.cos(lam),
       ];
       const rotY = (vector, angle) => {
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        return [
-          vector[0] * cos + vector[2] * sin,
-          vector[1],
-          -vector[0] * sin + vector[2] * cos,
-        ];
+        return [vector[0]*cos+vector[2]*sin, vector[1], -vector[0]*sin+vector[2]*cos];
       };
 
       const draw = () => {
         if (!running) return;
-
-        const width = canvas.width;
-        const height = canvas.height;
-        const cx = width / 2;
-        const cy = height / 2;
+        const width = canvas.width, height = canvas.height;
+        const cx = width / 2, cy = height / 2;
         const radius = Math.min(width, height) * 0.42;
+
         ctx.clearRect(0, 0, width, height);
         ctx.lineWidth = Math.max(1, dpr * 0.8);
 
         const rings = [];
-        for (let lat = -60; lat <= 60; lat += 30) {
-          const points = [];
-          for (let index = 0; index <= 72; index += 1) {
-            const lon = (index / 72) * Math.PI * 2;
-            points.push(rotY(vec(lat * deg, lon), theta));
+        for (let la = -60; la <= 60; la += 30) {
+          const pts = [];
+          for (let k = 0; k <= 72; k++) {
+            pts.push(rotY(vec(la * deg, (k / 72) * Math.PI * 2), theta));
           }
-          rings.push(points);
+          rings.push(pts);
+        }
+        for (let lo = 0; lo < 180; lo += 30) {
+          const pts = [];
+          for (let k = 0; k <= 48; k++) {
+            pts.push(rotY(vec(-Math.PI / 2 + (k / 48) * Math.PI, lo * deg), theta));
+          }
+          rings.push(pts);
         }
 
-        for (let lon = 0; lon < 180; lon += 30) {
-          const points = [];
-          for (let index = 0; index <= 48; index += 1) {
-            const phi = -Math.PI / 2 + (index / 48) * Math.PI;
-            points.push(rotY(vec(phi, lon * deg), theta));
-          }
-          rings.push(points);
-        }
-
-        rings.forEach((points) => {
+        rings.forEach((pts) => {
           let previousFront = null;
-
-          points.forEach((vector, index) => {
-            const front = vector[2] >= 0;
-            const sx = cx + radius * vector[0];
-            const sy = cy - radius * vector[1];
-
-            if (index === 0 || front !== previousFront) {
-              if (index > 0) ctx.stroke();
+          pts.forEach((v, i) => {
+            const front = v[2] >= 0;
+            const sx = cx + radius * v[0], sy = cy - radius * v[1];
+            if (i === 0 || front !== previousFront) {
+              if (i > 0) ctx.stroke();
               ctx.beginPath();
               ctx.moveTo(sx, sy);
               ctx.strokeStyle = front ? hexRgba(accentA, 0.34) : hexRgba(accentA, 0.07);
-            } else {
-              ctx.lineTo(sx, sy);
-            }
-
+            } else ctx.lineTo(sx, sy);
             previousFront = front;
           });
-
           ctx.stroke();
         });
 
         arcs.forEach((pair, index) => {
           const start = vec(nodes[pair[0]][0], nodes[pair[0]][1]);
-          const end = vec(nodes[pair[1]][0], nodes[pair[1]][1]);
-          const dot = Math.max(-1, Math.min(1, start[0] * end[0] + start[1] * end[1] + start[2] * end[2]));
+          const end   = vec(nodes[pair[1]][0], nodes[pair[1]][1]);
+          const dot   = Math.max(-1, Math.min(1, start[0]*end[0]+start[1]*end[1]+start[2]*end[2]));
           const omega = Math.acos(dot) || 0.0001;
           const sinOmega = Math.sin(omega);
           let started = false;
 
           ctx.beginPath();
-          for (let step = 0; step <= 40; step += 1) {
+          for (let step = 0; step <= 40; step++) {
             const amount = step / 40;
-            const weightA = Math.sin((1 - amount) * omega) / sinOmega;
-            const weightB = Math.sin(amount * omega) / sinOmega;
-            let vector = [
-              start[0] * weightA + end[0] * weightB,
-              start[1] * weightA + end[1] * weightB,
-              start[2] * weightA + end[2] * weightB,
-            ];
+            const wA = Math.sin((1-amount)*omega)/sinOmega, wB = Math.sin(amount*omega)/sinOmega;
+            let vector = [start[0]*wA+end[0]*wB, start[1]*wA+end[1]*wB, start[2]*wA+end[2]*wB];
             const lift = 1 + 0.16 * Math.sin(Math.PI * amount);
-            vector = rotY([vector[0] * lift, vector[1] * lift, vector[2] * lift], theta);
-            const sx = cx + radius * vector[0];
-            const sy = cy - radius * vector[1];
-
-            if (vector[2] < -0.1) {
-              started = false;
-            } else if (!started) {
-              ctx.moveTo(sx, sy);
-              started = true;
-            } else {
-              ctx.lineTo(sx, sy);
-            }
+            vector = rotY([vector[0]*lift, vector[1]*lift, vector[2]*lift], theta);
+            const sx = cx+radius*vector[0], sy = cy-radius*vector[1];
+            if (vector[2] < -0.1) { started = false; }
+            else if (!started) { ctx.moveTo(sx, sy); started = true; }
+            else ctx.lineTo(sx, sy);
           }
-
-          ctx.strokeStyle = hexRgba(index % 2 ? accentB : accentA, 0.5);
+          ctx.strokeStyle = hexRgba(index%2 ? accentB : accentA, 0.5);
           ctx.lineWidth = Math.max(1, dpr * 1.1);
           ctx.stroke();
 
           const pulse = (time * 0.18 + index * 0.23) % 1;
-          const weightA = Math.sin((1 - pulse) * omega) / sinOmega;
-          const weightB = Math.sin(pulse * omega) / sinOmega;
-          let pulseVector = [
-            start[0] * weightA + end[0] * weightB,
-            start[1] * weightA + end[1] * weightB,
-            start[2] * weightA + end[2] * weightB,
-          ];
-          const lift = 1 + 0.16 * Math.sin(Math.PI * pulse);
-          pulseVector = rotY([pulseVector[0] * lift, pulseVector[1] * lift, pulseVector[2] * lift], theta);
-
-          if (pulseVector[2] >= -0.1) {
-            const sx = cx + radius * pulseVector[0];
-            const sy = cy - radius * pulseVector[1];
+          const wA = Math.sin((1-pulse)*omega)/sinOmega, wB = Math.sin(pulse*omega)/sinOmega;
+          let pv = [start[0]*wA+end[0]*wB, start[1]*wA+end[1]*wB, start[2]*wA+end[2]*wB];
+          const lift2 = 1 + 0.16 * Math.sin(Math.PI * pulse);
+          pv = rotY([pv[0]*lift2, pv[1]*lift2, pv[2]*lift2], theta);
+          if (pv[2] >= -0.1) {
+            const sx = cx+radius*pv[0], sy = cy-radius*pv[1];
             ctx.beginPath();
-            ctx.arc(sx, sy, dpr * 2.4, 0, Math.PI * 2);
-            ctx.fillStyle = hexRgba(index % 2 ? accentB : accentA, 0.95);
+            ctx.arc(sx, sy, dpr*2.4, 0, Math.PI*2);
+            ctx.fillStyle = hexRgba(index%2 ? accentB : accentA, 0.95);
             ctx.fill();
           }
         });
@@ -472,35 +469,21 @@ function useBeaconAnimations(hostRef) {
         nodes.forEach((node) => {
           const vector = rotY(vec(node[0], node[1]), theta);
           if (vector[2] < 0) return;
-
-          const sx = cx + radius * vector[0];
-          const sy = cy - radius * vector[1];
-          ctx.beginPath();
-          ctx.arc(sx, sy, dpr * 3.2, 0, Math.PI * 2);
-          ctx.fillStyle = hexRgba(accentB, 0.18);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(sx, sy, dpr * 1.5, 0, Math.PI * 2);
-          ctx.fillStyle = '#dfe6ff';
-          ctx.fill();
+          const sx = cx+radius*vector[0], sy = cy-radius*vector[1];
+          ctx.beginPath(); ctx.arc(sx,sy,dpr*3.2,0,Math.PI*2);
+          ctx.fillStyle = hexRgba(accentB,0.18); ctx.fill();
+          ctx.beginPath(); ctx.arc(sx,sy,dpr*1.5,0,Math.PI*2);
+          ctx.fillStyle = '#dfe6ff'; ctx.fill();
         });
 
-        theta += 0.0018;
-        time += 0.016;
+        theta += 0.0018; time += 0.016;
         raf = requestAnimationFrame(draw);
       };
 
       resize();
       window.addEventListener('resize', resize);
       draw();
-
-      return {
-        stop: () => {
-          running = false;
-          cancelAnimationFrame(raf);
-          window.removeEventListener('resize', resize);
-        },
-      };
+      return { stop: () => { running = false; cancelAnimationFrame(raf); window.removeEventListener('resize', resize); } };
     };
 
     const globe = initGlobe();
@@ -532,7 +515,6 @@ function useBeaconAnimations(hostRef) {
             element.style.transform = 'none';
             return false;
           }
-
           return true;
         });
       }
@@ -566,43 +548,21 @@ function useBeaconAnimations(hostRef) {
     };
 
     const safeTick = () => {
-      try {
-        tick();
-      } catch (error) {
-        if (!warned) {
-          console.warn('Beacon Atlas animation tick failed', error);
-          warned = true;
-        }
+      try { tick(); }
+      catch (error) {
+        if (!warned) { console.warn('Beacon Atlas animation tick failed', error); warned = true; }
       }
     };
 
     const showStaticState = () => {
-      root.querySelectorAll('[data-reveal]').forEach((element) => {
-        element.style.opacity = '1';
-        element.style.transform = 'none';
-      });
-      cache.tcards.forEach((card) => {
-        card.style.opacity = '1';
-        card.style.transform = 'none';
-      });
-      cache.words.forEach((word) => {
-        word.style.opacity = '1';
-      });
-      if (cache.globalText) {
-        cache.globalText.style.opacity = '1';
-        cache.globalText.style.transform = 'none';
-      }
-      if (cache.globalStats) {
-        cache.globalStats.style.opacity = '1';
-        cache.globalStats.style.transform = 'none';
-      }
+      revealBeaconContent(root);
     };
 
     if (reduce) {
       showStaticState();
       safeTick();
-
       return () => {
+        window.clearTimeout(revealTimer);
         globe?.stop();
         aurora?.stop();
         jumpLinks.forEach((link) => link.removeEventListener('click', onJump));
@@ -612,7 +572,6 @@ function useBeaconAnimations(hostRef) {
 
     const onScrollOrResize = () => safeTick();
     const settleTimers = [60, 200, 500, 1000].map((delay) => window.setTimeout(safeTick, delay));
-
     window.addEventListener('scroll', onScrollOrResize, { passive: true });
     window.addEventListener('resize', onScrollOrResize);
     safeTick();
@@ -620,24 +579,312 @@ function useBeaconAnimations(hostRef) {
     return () => {
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
+      window.clearTimeout(revealTimer);
       settleTimers.forEach((timer) => window.clearTimeout(timer));
       globe?.stop();
       aurora?.stop();
       jumpLinks.forEach((link) => link.removeEventListener('click', onJump));
       hoverCleanups.forEach((cleanup) => cleanup());
     };
-  }, [hostRef]);
+  }, [hostRef, active]);
+}
+
+// ─── Analyzing state ────────────────────────────────────────────────────────
+
+const STEPS = [
+  { label: 'Guardian running', sub: 'Scanning for PII and replacing with tokens' },
+  { label: 'Sending tokenized text', sub: 'Your real values stay on this device' },
+  { label: 'Simplifier agent', sub: 'Extracting actions and deadlines' },
+  { label: 'Re-hydrating on device', sub: 'Swapping tokens back to your real values' },
+];
+
+function AnalyzingState({ step = 0 }) {
+  return (
+    <div
+      className="product-shell"
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 34,
+        color: '#eef1f7',
+        padding: 24,
+      }}
+    >
+      <div style={{ position: 'relative', width: 116, height: 116 }}>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            border: '1px solid rgba(255,255,255,.14)',
+            boxShadow: '0 0 70px rgba(91,140,255,.25)',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 18,
+            borderRadius: '50%',
+            border: '2px solid transparent',
+            borderTopColor: '#5b8cff',
+            borderRightColor: '#a06bff',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+        <div style={{ position:'absolute', inset:42, borderRadius:'50%', background:'linear-gradient(135deg,#5b8cff,#a06bff)', boxShadow:'0 0 24px rgba(91,140,255,.9)' }} />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+
+      <div style={{ textAlign: 'center', maxWidth: 420 }}>
+        <span style={{ display:'block', marginBottom:12, color:'#5b8cff', fontFamily:"'IBM Plex Mono',monospace", fontSize:12, letterSpacing:'.18em', textTransform:'uppercase' }}>
+          Secure pipeline in motion
+        </span>
+        <h1 style={{ margin: '0 0 8px', fontFamily:"'Archivo','D-DIN Bold',system-ui,sans-serif", fontSize: 'clamp(34px,5vw,58px)', lineHeight: .98, fontWeight: 900, textTransform:'uppercase', letterSpacing:'.01em' }}>
+          Analyzing your document
+        </h1>
+        <p style={{ margin: 0, fontSize: 15, color: '#98a2bb', lineHeight:1.6 }}>
+          {STEPS[Math.min(step, STEPS.length - 1)].sub}
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gap: 10, width: '100%', maxWidth: 520, padding:18, border:'1px solid rgba(255,255,255,.09)', borderRadius:22, background:'rgba(255,255,255,.035)', boxShadow:'0 24px 70px rgba(0,0,0,.22)' }}>
+        {STEPS.map((s, i) => (
+          <div
+            key={s.label}
+            style={{
+              display: 'grid',
+              gridTemplateColumns:'24px 1fr',
+              alignItems: 'center',
+              gap: 12,
+              opacity: i <= step ? 1 : 0.25,
+              transition: 'opacity .4s',
+            }}
+          >
+            <div
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                border: `2px solid ${i < step ? '#4ade80' : i === step ? '#5b8cff' : 'rgba(255,255,255,.15)'}`,
+                background: i < step ? 'rgba(74,222,128,.15)' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {i < step && (
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                  <path d="M1 4l2.5 3L9 1" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <span style={{ fontSize: 14, color: i <= step ? '#eef1f7' : '#3a4255' }}>
+              {s.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Root component ─────────────────────────────────────────────────────────
+
+function toAccount(user) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'You'),
+  };
+}
+
+function readExtensionImport() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const text = params.get('extensionText');
+  if (!text) return null;
+
+  const source = params.get('extensionSource') || 'Chrome PDF import';
+  params.delete('extensionText');
+  params.delete('extensionSource');
+  const nextSearch = params.toString();
+  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+  window.history.replaceState({}, '', nextUrl);
+
+  return { text, source };
 }
 
 export default function App() {
+  const [account, setAccount] = useState(null);
+  const [view, setView] = useState('landing');
+  const [analyzeStep, setAnalyzeStep] = useState(0);
+  const [result, setResult] = useState(null);
+  const [apiError, setApiError] = useState('');
+  const [extensionImport] = useState(readExtensionImport);
+
   const hostRef = useRef(null);
   const template = useMemo(buildBeaconTemplate, []);
-  useBeaconAnimations(hostRef);
+  useBeaconAnimations(hostRef, view === 'landing');
+
+  // ── Supabase auth session: hydrate on load + react to sign in/out ──────────
+  useEffect(() => {
+    if (extensionImport && !account) setView('login');
+  }, [extensionImport, account]);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      const user = data.session?.user ?? null;
+      if (user) {
+        setAccount(toAccount(user));
+        setView((v) => (v === 'landing' || v === 'login' || extensionImport ? 'dashboard' : v));
+      }
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null;
+      setAccount(toAccount(user));
+      if (user) {
+        setView((v) => (v === 'landing' || v === 'login' || extensionImport ? 'dashboard' : v));
+      } else {
+        setResult(null);
+        setView('landing');
+      }
+    });
+
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, [extensionImport]);
+
+  // Wire landing page "Try" buttons to account entry.
+  useEffect(() => {
+    if (view !== 'landing') return;
+    const host = hostRef.current;
+    if (!host) return;
+
+    const timer = window.setTimeout(() => {
+      const tryButtons = [...host.querySelectorAll('button')].filter((b) =>
+        b.textContent.includes('Try')
+      );
+      const handler = () => setView(account ? 'dashboard' : 'login');
+      tryButtons.forEach((b) => b.addEventListener('click', handler));
+      return () => tryButtons.forEach((b) => b.removeEventListener('click', handler));
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [view, account]);
+
+  const handleLogout = useCallback(async () => {
+    if (supabase) await supabase.auth.signOut();
+    setAccount(null);
+    setResult(null);
+    setView('landing');
+  }, []);
+
+  const handleAnalyze = useCallback(async (rawText, pipelineType = 'common', source = 'Uploaded document') => {
+    setView('analyzing');
+    setAnalyzeStep(0);
+    setApiError('');
+    setResult(null);
+
+    try {
+      // Step 0 — Guardian (client-side, synchronous)
+      const { tokenized, mappingTable, stats } = runGuardian(rawText);
+      setAnalyzeStep(1);
+
+      // Small delay so the UI step is readable
+      await new Promise((r) => setTimeout(r, 400));
+      setAnalyzeStep(2);
+
+      // Step 2 — Pipeline analysis (API call with TOKENIZED text)
+      const analysis = await runSimplifier(tokenized, pipelineType);
+      setAnalyzeStep(3);
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      // Step 3 — Re-hydrate on device, render, and persist the structured plan.
+      setResult({ analysis, mappingTable, guardianStats: stats, source, pipelineType });
+      setView('results');
+
+      // Best-effort save (real values, owner-scoped via RLS). Never blocks the UI.
+      const rehydrated = rehydrateDeep(analysis, mappingTable);
+      saveReport({ source, analysis: rehydrated }).catch((err) =>
+        console.warn('[app] Could not save report:', err.message)
+      );
+    } catch (err) {
+      setApiError(err.message ?? 'Something went wrong. Please try again.');
+      setView('dashboard');
+    }
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setView('dashboard');
+    setResult(null);
+    setApiError('');
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setView('landing');
+    setResult(null);
+    setApiError('');
+    // Scroll landing page to top when returning
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleOpenReport = useCallback((report) => {
+    // Saved reports are already re-hydrated; no mapping table needed.
+    setResult({ analysis: report.analysis, mappingTable: null, guardianStats: null, source: report.source });
+    setView('results');
+  }, []);
 
   return (
-    <main className="beacon-app min-h-screen bg-[#06070e] text-[#eef1f7] font-ddin">
-      <style>{template.style}</style>
-      <div ref={hostRef} dangerouslySetInnerHTML={{ __html: template.markup }} />
-    </main>
+    <>
+      {/* ── Landing page (always mounted, hidden when not active) ── */}
+      <main
+        className="beacon-app min-h-screen bg-[#06070e] text-[#eef1f7] font-ddin"
+        style={{ display: view === 'landing' ? 'block' : 'none' }}
+        aria-hidden={view !== 'landing'}
+      >
+        <style>{template.style}</style>
+        <div ref={hostRef} dangerouslySetInnerHTML={{ __html: template.markup }} />
+      </main>
+
+      {/* ── Product overlay ── */}
+      {view === 'login' && (
+        <AuthGate onBack={handleBack} />
+      )}
+
+      {view === 'dashboard' && account && (
+        <Dashboard
+          account={account}
+          onAnalyze={handleAnalyze}
+          onBack={handleBack}
+          onLogout={handleLogout}
+          onOpenReport={handleOpenReport}
+          initialError={apiError}
+          initialText={extensionImport?.text || ''}
+          initialSource={extensionImport?.source || ''}
+        />
+      )}
+
+      {view === 'analyzing' && <AnalyzingState step={analyzeStep} />}
+
+      {view === 'results' && result && (
+        <CrisisActionRoom
+          analysis={result.analysis}
+          mappingTable={result.mappingTable}
+          guardianStats={result.guardianStats}
+          onReset={handleReset}
+          onDashboard={handleReset}
+        />
+      )}
+    </>
   );
 }

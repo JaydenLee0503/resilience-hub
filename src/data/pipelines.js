@@ -1,0 +1,12 @@
+export const PIPELINES = [
+  { id: 'immigration', label: 'Immigrant Pipeline', title: 'Bureaucracy Navigator', description: 'Immigration, asylum, visa, refugee, DACA, biometrics, and status paperwork.', examples: ['USCIS notice', 'DACA renewal', 'fee waiver packet', 'biometrics letter'], accent: '#5b8cff' },
+  { id: 'medical', label: 'Medical Pipeline', title: 'Medical Navigator', description: 'Discharge papers, prescriptions, insurance forms, care plans, and equipment instructions.', examples: ['ICU discharge', 'medication schedule', 'DME waiver', 'follow-up instructions'], accent: '#4ade80' },
+  { id: 'school', label: 'School Pipeline', title: 'Student Support Navigator', description: 'Scholarships, discipline letters, IEP/504, enrollment, exams, and financial aid notices.', examples: ['IEP denial', 'scholarship notice', 'disciplinary letter', 'accommodation form'], accent: '#a06bff' },
+  { id: 'legal', label: 'Legal Pipeline', title: 'LegalAid Navigator', description: 'Eviction notices, court letters, contracts, diversion paperwork, and disputes.', examples: ['eviction notice', 'court summons', 'contract', 'diversion agreement'], accent: '#fb923c' },
+  { id: 'financial_aid', label: 'Financial Assistance Pipeline', title: 'Benefits & Aid Navigator', description: 'Grants, benefits, insurance claims, aid applications, and eligibility documents.', examples: ['benefits notice', 'grant packet', 'insurance claim', 'aid denial'], accent: '#facc15' },
+  { id: 'housing', label: 'Housing Pipeline', title: 'Housing Stability Navigator', description: 'Lease notices, rent assistance, housing benefits, landlord letters, and utility warnings.', examples: ['lease notice', 'rent arrears', 'housing voucher', 'utility shutoff'], accent: '#38bdf8' },
+  { id: 'employment', label: 'Employment Pipeline', title: 'Workplace Rights Navigator', description: 'Contracts, HR policies, severance, termination notices, and workplace documentation.', examples: ['termination letter', 'severance offer', 'HR policy', 'workplace complaint'], accent: '#f472b6' },
+  { id: 'common', label: 'General Pipeline', title: 'General Crisis Reader', description: 'Use this when no specialized pipeline matches. It still extracts what matters, risks, next steps, and help.', examples: ['unknown notice', 'mixed document', 'email thread', 'anything else'], accent: '#c4d0ff' },
+];
+
+export const PIPELINE_LABELS = Object.fromEntries(PIPELINES.map((pipeline) => [pipeline.id, pipeline.title]));
