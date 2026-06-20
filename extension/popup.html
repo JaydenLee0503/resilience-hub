@@ -52,6 +52,22 @@
         color: #c4d0ff;
         font-size: 12px;
       }
+      .spinner {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        margin-right: 7px;
+        border: 2px solid rgba(91, 140, 255, 0.3);
+        border-top-color: #5b8cff;
+        border-radius: 50%;
+        vertical-align: -1px;
+        animation: cl-spin 0.7s linear infinite;
+      }
+      @keyframes cl-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
       #summary {
         margin-top: 12px;
         max-height: 260px;

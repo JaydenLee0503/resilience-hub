@@ -26,7 +26,27 @@ const DEFAULTS = {
 const MAX_URL_TEXT = 12000;
 const MAX_SUMMARY_TEXT = 8000;
 
+// Values shipped as defaults by older (local-dev) builds. A one-time migration
+// clears these from storage so the extension points at production. Guarded by a
+// flag so a developer can still set localhost afterward without it reverting.
+const LEGACY_LOCALHOST = {
+  summarizeUrl: 'http://localhost:3001/api/summarize',
+  appUrl: 'http://localhost:5173/',
+};
+
+async function migrateLegacyDefaults() {
+  try {
+    const { _migratedToProd } = await chrome.storage.local.get('_migratedToProd');
+    if (_migratedToProd) return;
+    const stored = await chrome.storage.local.get(Object.keys(LEGACY_LOCALHOST));
+    const staleKeys = Object.keys(LEGACY_LOCALHOST).filter((k) => stored[k] === LEGACY_LOCALHOST[k]);
+    if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
+    await chrome.storage.local.set({ _migratedToProd: true });
+  } catch { /* storage unavailable — defaults still apply */ }
+}
+
 async function getSettings() {
+  await migrateLegacyDefaults();
   try {
     const stored = await chrome.storage.local.get(Object.keys(DEFAULTS));
     return { ...DEFAULTS, ...stored };
@@ -69,10 +89,12 @@ async function run() {
 // ── AI summary (Featherless via the local backend) ───────────────────────────
 
 async function summarize() {
+  const originalLabel = summarizeBtn.textContent;
   summarizeBtn.disabled = true;
   sendBtn.disabled = true;
+  summarizeBtn.textContent = 'Summarizing…';
   summaryEl.textContent = '';
-  setStatus('Reading the current tab…');
+  setStatus('Reading the current tab…', false, true);
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab found.');
@@ -87,7 +109,7 @@ async function summarize() {
     const { tokenized, mappingTable } = runGuardian(clean.slice(0, MAX_SUMMARY_TEXT));
 
     const settings = await getSettings();
-    setStatus('Summarizing with AI…');
+    setStatus('Summarizing with AI… this is quick, please wait.', false, true);
     const headers = { 'Content-Type': 'application/json' };
     if (settings.anonKey) {
       // Deployed Edge Functions may require the project's (public) anon key.
@@ -120,6 +142,7 @@ async function summarize() {
   } finally {
     summarizeBtn.disabled = false;
     sendBtn.disabled = false;
+    summarizeBtn.textContent = originalLabel;
   }
 }
 
@@ -365,7 +388,13 @@ function normalizeText(value) {
     .trim();
 }
 
-function setStatus(message, isError = false) {
-  statusEl.textContent = message;
+function setStatus(message, isError = false, busy = false) {
+  statusEl.textContent = '';
+  if (busy) {
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner';
+    statusEl.appendChild(spinner);
+  }
+  statusEl.appendChild(document.createTextNode(message));
   statusEl.style.color = isError ? '#ffb4b4' : '#c4d0ff';
 }
