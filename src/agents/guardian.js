@@ -29,7 +29,7 @@ const PATTERNS = [
   // North American phone numbers (many formats)
   {
     key: 'PHONE',
-    regex: /\b(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/g,
+    regex: /(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/g,
   },
 
   // Dollar amounts: $1,247.00 or $800

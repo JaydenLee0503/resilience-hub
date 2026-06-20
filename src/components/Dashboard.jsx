@@ -240,7 +240,7 @@ export default function Dashboard({
             <button className={inputMode === 'document' ? 'active' : ''} onClick={() => setInputMode('document')}>PDF / text</button>
             <button className={inputMode === 'gmail' ? 'active' : ''} onClick={() => setInputMode('gmail')}>Gmail reader</button>
             <button className={inputMode === 'extension' ? 'active' : ''} onClick={() => setInputMode('extension')}>Browser extension</button>
-            <button type="button" className="primary-action calendar-cta">Connect calendar</button>
+            <button type="button" className="primary-action calendar-cta" disabled={true}>Connect calendar</button>
           </div>
 
           {inputMode === 'document' && (
@@ -337,7 +337,7 @@ export default function Dashboard({
                 <li>Unzip the download, then open <code>chrome://extensions</code>.</li>
                 <li>Turn on <strong>Developer mode</strong>, then click <strong>Load unpacked</strong>.</li>
                 <li>Select the unzipped <code>beacon-atlas-extension</code> folder.</li>
-                <li>Open a PDF or page, click the Beacon Atlas icon, then <strong>Send current tab</strong>.</li>
+                <li>Open a PDF or page, click the Beacon Atlas icon, then <strong>Send to dashboard</strong>.</li>
               </ol>
               <p className="ext-foot">
                 For local <code>file://</code> PDFs, enable “Allow access to file URLs” on the

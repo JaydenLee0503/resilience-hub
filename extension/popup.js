@@ -19,7 +19,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('vendor/pdf.worke
 // local development, override the Summarizer endpoint with
 // http://localhost:3001/api/summarize in the options.
 const DEFAULTS = {
-  summarizeUrl: 'https://uzxxjbtiyyxxadzovkqg.supabase.co/functions/v1/analyze',
+  summarizeUrl: 'http://localhost:3001/api/summarize',
   appUrl: 'http://localhost:5173/',
   anonKey: '',
 };
@@ -126,7 +126,9 @@ async function summarize() {
 // Swap [TOKEN] placeholders back to real values (split/join avoids regex escaping).
 function rehydrate(text, mappingTable) {
   let out = String(text || '');
-  for (const [token, value] of mappingTable) out = out.split(token).join(value);
+  // Sort by token length descending to avoid substring replacement issues
+  const sorted = Array.from(mappingTable).sort((a, b) => b[0].length - a[0].length);
+  for (const [token, value] of sorted) out = out.split(token).join(value);
   return out;
 }
 
@@ -332,8 +334,15 @@ async function openInApp(text, source, appUrl) {
     ? `[Chrome extension note: the document was longer than the transfer limit, so this import contains the first ${MAX_URL_TEXT.toLocaleString()} characters.]\n\n`
     : '';
   const payload = prefix + text.slice(0, MAX_URL_TEXT);
+
+  // Generate opaque import ID and store payload in session storage
+  const importId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  await chrome.storage.session.set({
+    [importId]: { source, text: payload, timestamp: Date.now() }
+  });
+
   const base = appUrl || DEFAULTS.appUrl;
-  const url = `${base}?extensionSource=${encodeURIComponent(source)}&extensionText=${encodeURIComponent(payload)}`;
+  const url = `${base}?extensionImportId=${encodeURIComponent(importId)}`;
   await chrome.tabs.create({ url });
 }
 

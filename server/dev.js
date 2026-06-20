@@ -127,20 +127,28 @@ Tokens like [DATE_1] must appear exactly as-is in the output.
 }
 
 // ─── CORS headers ────────────────────────────────────────────────────────────
-// '*' so both the Vite app (localhost:5173) and the Chrome extension
-// (chrome-extension://…) can reach this dev server. No credentials are used.
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+// Allowlist for local dev: Vite app and Chrome extensions only
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+];
+
+function getCorsHeaders(origin) {
+  // Check exact match or chrome-extension: pattern
+  const isAllowed = ALLOWED_ORIGINS.includes(origin) || (origin && origin.startsWith('chrome-extension://'));
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
 
 // ─── Main handler ────────────────────────────────────────────────────────────
 async function handleRequest(req, res, pipelines) {
   const { classifyDocument, PIPELINE_PROMPTS, PIPELINE_ENRICH, FALLBACK_PROMPT } = pipelines;
 
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, CORS_HEADERS);
+    res.writeHead(204, getCorsHeaders(req.headers.origin || ''));
     res.end();
     return;
   }
@@ -154,7 +162,7 @@ async function handleRequest(req, res, pipelines) {
   }
 
   if (req.method !== 'POST' || req.url !== '/api/analyze') {
-    res.writeHead(404, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(404, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'Not found' }));
     return;
   }
@@ -166,20 +174,20 @@ async function handleRequest(req, res, pipelines) {
   try {
     ({ tokenizedText, pipelineType: requestedPipelineType } = JSON.parse(body));
   } catch {
-    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(400, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'Invalid JSON body' }));
     return;
   }
 
   if (!tokenizedText || typeof tokenizedText !== 'string') {
-    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(400, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'tokenizedText is required' }));
     return;
   }
 
   const residualPii = auditRawPii(tokenizedText);
   if (residualPii.length) {
-    res.writeHead(422, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(422, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: `Guardian blocked this request because tokenized text still looks sensitive: ${residualPii.join(', ')}` }));
     return;
   }
@@ -195,7 +203,7 @@ async function handleRequest(req, res, pipelines) {
   const systemPrompt = PIPELINE_PROMPTS[pipeline_type] ?? FALLBACK_PROMPT;
 
   if (!API_KEY) {
-    res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(200, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify(demoAnalysis(tokenizedText, pipeline_type)));
     return;
   }
@@ -234,7 +242,7 @@ async function handleRequest(req, res, pipelines) {
     });
   } catch (err) {
     console.error('[analyze] Featherless fetch failed:', err.message);
-    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(502, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'Failed to reach AI service. Check your network.' }));
     return;
   }
@@ -242,7 +250,7 @@ async function handleRequest(req, res, pipelines) {
   if (!featherlessRes.ok) {
     const errBody = await featherlessRes.text().catch(() => '');
     console.error(`[analyze] Featherless error ${featherlessRes.status}:`, errBody.slice(0, 200));
-    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(502, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: `AI service error: ${featherlessRes.status}` }));
     return;
   }
@@ -258,7 +266,7 @@ async function handleRequest(req, res, pipelines) {
   const enrich = PIPELINE_ENRICH[pipeline_type];
   const final = normalizeAnalysis(enrich ? enrich(parsed) : parsed, pipeline_type, tokenizedText);
 
-  res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+  res.writeHead(200, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
   res.end(JSON.stringify(final));
 }
 
@@ -271,13 +279,13 @@ async function handleChat(req, res) {
   try {
     ({ question, context } = JSON.parse(body));
   } catch {
-    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(400, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'Invalid JSON body' }));
     return;
   }
 
   if (!question || typeof question !== 'string') {
-    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(400, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'question is required' }));
     return;
   }
@@ -285,13 +293,13 @@ async function handleChat(req, res) {
   // The Guardian runs on the device before this; context/question must be tokenized.
   const residualPii = auditRawPii(`${context ?? ''}\n${question}`);
   if (residualPii.length) {
-    res.writeHead(422, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(422, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: `Guardian blocked this chat because the text still looks sensitive: ${residualPii.join(', ')}` }));
     return;
   }
 
   if (!API_KEY) {
-    res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(200, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ answer: 'Demo mode: no AI key is set, so I can\'t generate a live answer. Check the deadlines and the "what to do next" steps in your report above.' }));
     return;
   }
@@ -313,7 +321,7 @@ async function handleChat(req, res) {
     });
   } catch (err) {
     console.error('[chat] Featherless fetch failed:', err.message);
-    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(502, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'Failed to reach AI service. Check your network.' }));
     return;
   }
@@ -321,7 +329,7 @@ async function handleChat(req, res) {
   if (!featherlessRes.ok) {
     const errBody = await featherlessRes.text().catch(() => '');
     console.error(`[chat] Featherless error ${featherlessRes.status}:`, errBody.slice(0, 200));
-    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(502, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: `AI service error: ${featherlessRes.status}` }));
     return;
   }
@@ -330,26 +338,36 @@ async function handleChat(req, res) {
   const answer = (data.choices?.[0]?.message?.content ?? '').trim();
   console.log('[chat] answered follow-up question');
 
-  res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+  res.writeHead(200, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
   res.end(JSON.stringify({ answer: answer || 'I could not find an answer in your report. Check the original document or a qualified professional.' }));
 }
 
 // ─── Summarizer handler (Chrome extension) ──────────────────────────────────
 async function handleSummarize(req, res) {
+  const MAX_BODY_SIZE = 1024 * 1024; // 1MB
   let body = '';
-  for await (const chunk of req) body += chunk;
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BODY_SIZE) {
+      res.writeHead(413, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
+      res.end(JSON.stringify({ error: 'Request body too large (max 1MB)' }));
+      return;
+    }
+    body += chunk;
+  }
 
   let text;
   try {
     ({ text } = JSON.parse(body));
   } catch {
-    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(400, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'Invalid JSON body' }));
     return;
   }
 
   if (!text || typeof text !== 'string' || text.trim().length < 30) {
-    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(400, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'text is required (min 30 chars)' }));
     return;
   }
@@ -357,13 +375,13 @@ async function handleSummarize(req, res) {
   // The Guardian runs on the device before this; the text must already be tokenized.
   const residualPii = auditRawPii(text);
   if (residualPii.length) {
-    res.writeHead(422, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(422, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: `Guardian blocked this summary because the text still looks sensitive: ${residualPii.join(', ')}` }));
     return;
   }
 
   if (!API_KEY) {
-    res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(200, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ summary: 'Demo mode: no AI key is set, so I can\'t generate a live summary. Set FEATHERLESS_API_KEY in .env and restart the dev server.' }));
     return;
   }
@@ -387,7 +405,7 @@ async function handleSummarize(req, res) {
     });
   } catch (err) {
     console.error('[summarize] Featherless fetch failed:', err.message);
-    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(502, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: 'Failed to reach AI service. Check your network.' }));
     return;
   }
@@ -395,7 +413,7 @@ async function handleSummarize(req, res) {
   if (!featherlessRes.ok) {
     const errBody = await featherlessRes.text().catch(() => '');
     console.error(`[summarize] Featherless error ${featherlessRes.status}:`, errBody.slice(0, 200));
-    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.writeHead(502, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
     res.end(JSON.stringify({ error: `AI service error: ${featherlessRes.status}` }));
     return;
   }
@@ -404,7 +422,7 @@ async function handleSummarize(req, res) {
   const summary = (data.choices?.[0]?.message?.content ?? '').trim();
   console.log('[summarize] summarized a document for the extension');
 
-  res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+  res.writeHead(200, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
   res.end(JSON.stringify({ summary: summary || 'No summary could be generated. Try the full analysis in the dashboard instead.' }));
 }
 
@@ -527,7 +545,7 @@ loadPipelines().then((pipelines) => {
   const server = http.createServer((req, res) => {
     handleRequest(req, res, pipelines).catch((err) => {
       console.error('[analyze] Unhandled error:', err);
-      res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+      res.writeHead(500, { 'Content-Type': 'application/json', ...getCorsHeaders(req.headers.origin || '') });
       res.end(JSON.stringify({ error: 'Internal server error' }));
     });
   });

@@ -2394,7 +2394,7 @@ body {
    ============================================================================ */
 .product-shell:not(.auth-screen),
 .product-shell:not(.auth-screen) * {
-  font-family: "Inter", "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+  font-family: Inter, Hanken Grotesk, system-ui, -apple-system, sans-serif;
 }
 
 /* Keep the IBM Plex Mono accents (kickers, labels, codes, chips, step tiles). */
@@ -2451,10 +2451,14 @@ body {
   box-shadow: -26px 0 64px rgba(0, 0, 0, 0.4);
   transform: translateX(100%);
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  visibility: hidden;
+  pointer-events: none;
   z-index: 60;
 }
 .report-chat-panel.open {
   transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .report-chat-panel-head {
@@ -2539,10 +2543,14 @@ body {
   box-shadow: 26px 0 64px rgba(0, 0, 0, 0.4);
   transform: translateX(-100%);
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  visibility: hidden;
+  pointer-events: none;
   z-index: 60;
 }
 .history-panel.open {
   transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 .history-head {
   display: flex;

@@ -3,7 +3,7 @@
 // either the local dev server or a deployed Supabase Edge Function.
 
 const DEFAULTS = {
-  summarizeUrl: 'https://uzxxjbtiyyxxadzovkqg.supabase.co/functions/v1/analyze',
+  summarizeUrl: 'http://localhost:3001/api/summarize',
   appUrl: 'http://localhost:5173/',
   anonKey: '',
 };

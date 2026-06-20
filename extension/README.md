@@ -39,7 +39,7 @@ Text extraction works on:
 
 1. Make sure the app is running locally (`npm run dev:all`, dashboard at `http://localhost:5173`).
 2. Open a PDF or a page in Chrome.
-3. Click the **Beacon Atlas** toolbar icon → **Send current tab**.
+3. Click the **Beacon Atlas** toolbar icon → **Send to dashboard**.
 4. A new tab opens at the dashboard with the extracted text already loaded. Sign in if asked,
    pick a navigator, and analyze.
 

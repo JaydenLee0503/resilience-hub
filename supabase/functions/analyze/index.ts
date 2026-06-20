@@ -654,6 +654,14 @@ async function handleSummarize(
     return json({ error: "Field 'text' (min 30 chars, tokenized) is required." }, 400);
   }
 
+  // Guardian must run on the device before this; verify no residual PII.
+  const residualPii = auditRawPii(text);
+  if (residualPii.length > 0) {
+    return json({
+      error: `Guardian blocked this summary because the text still looks sensitive: ${residualPii.join(", ")}`,
+    }, 422);
+  }
+
   const truncated = text.length > 8000 ? text.slice(0, 8000) + "\n[Truncated due to context limits]" : text;
 
   let providerRes: Response;
@@ -710,6 +718,20 @@ const VALID_TYPES = new Set([
 ]);
 const VALID_URGENCY = new Set(["low", "medium", "high", "critical"]);
 const asArray = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
+
+// ─── PII audit helper ──────────────────────────────────────────────────────
+// Mirrors server/dev.js auditRawPii — checks for residual PII patterns that
+// should have been tokenized by Guardian.
+function auditRawPii(text: string): string[] {
+  const checks: [string, RegExp][] = [
+    ['SSN', /\b\d{3}-\d{2}-\d{4}\b/],
+    ['SIN', /\b\d{3}[- ]\d{3}[- ]\d{3}\b/],
+    ['AMOUNT', /\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/],
+    ['PHONE', /(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/],
+    ['POSTAL', /\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/i],
+  ];
+  return checks.filter(([, regex]) => regex.test(text)).map(([name]) => name);
+}
 
 function normalizeAnalysis(
   value: Record<string, unknown> | null,
