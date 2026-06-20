@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Beacon Atlas — Settings</title>
+    <style>
+      body {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+        color: #eef1f7;
+        background: #06070e;
+        font: 14px/1.5 Arial, sans-serif;
+      }
+      h1 {
+        font-size: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin: 0 0 6px;
+      }
+      p.lead {
+        color: #98a2bb;
+        margin: 0 0 26px;
+      }
+      label {
+        display: block;
+        margin: 18px 0 6px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #8a9ac4;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 6px;
+        background: rgba(2, 4, 14, 0.6);
+        color: #eef1f7;
+        padding: 11px 12px;
+        font-size: 13px;
+      }
+      input:focus {
+        outline: none;
+        border-color: rgba(91, 140, 255, 0.65);
+      }
+      small {
+        display: block;
+        margin-top: 5px;
+        color: #5a637c;
+        font-size: 11.5px;
+        line-height: 1.45;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 28px;
+      }
+      button {
+        border: 1px solid rgba(91, 140, 255, 0.55);
+        border-radius: 6px;
+        background: rgba(91, 140, 255, 0.14);
+        color: #eef1f7;
+        padding: 11px 18px;
+        font-weight: 700;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      button.secondary {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      #saved {
+        color: #4ade80;
+        font-size: 12px;
+        min-height: 16px;
+      }
+      .preset {
+        margin-top: 8px;
+        font-size: 11.5px;
+        color: #c4d0ff;
+        cursor: pointer;
+        background: none;
+        border: 0;
+        padding: 0;
+        text-decoration: underline;
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 400;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Beacon Atlas — Settings</h1>
+    <p class="lead">Point the extension at your backend. Use the local dev server by default, or a deployed Supabase Edge Function for production.</p>
+
+    <label for="summarizeUrl">Summarizer endpoint</label>
+    <input id="summarizeUrl" type="url" placeholder="http://localhost:3001/api/summarize" />
+    <small>
+      Local dev: <code>http://localhost:3001/api/summarize</code>.
+      Deployed: <code>https://&lt;project-ref&gt;.supabase.co/functions/v1/analyze</code>.
+    </small>
+    <button class="preset" id="preset-prod" type="button">Use a deployed Supabase function URL…</button>
+
+    <label for="appUrl">Dashboard URL (Send to dashboard)</label>
+    <input id="appUrl" type="url" placeholder="http://localhost:5173/" />
+    <small>Where "Send to dashboard" opens the document. Local: <code>http://localhost:5173/</code>.</small>
+
+    <label for="anonKey">Supabase anon key (optional)</label>
+    <input id="anonKey" type="text" placeholder="eyJhbGciOi… (only if the function requires it)" />
+    <small>Only needed if your deployed function rejects unauthenticated calls. Sent as the <code>apikey</code> header. The anon key is public/non-secret.</small>
+
+    <div class="row">
+      <button id="save" type="button">Save</button>
+      <button id="reset" class="secondary" type="button">Reset to defaults</button>
+      <span id="saved" role="status"></span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

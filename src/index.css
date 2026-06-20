@@ -83,6 +83,9 @@ body,
   min-height: 100%;
   margin: 0;
   background: #06070e;
+  /* No rubber-band overscroll: pulling up past the top would bounce the sticky
+     nav down over the fixed history/chat panels. */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -488,6 +491,60 @@ body {
   margin-top: 16px;
   color: #fca5a5;
   font-size: 14px;
+}
+
+/* Browser-extension tab */
+.ext-panel {
+  margin-top: 24px;
+  display: grid;
+  gap: 18px;
+}
+.ext-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.16);
+}
+.ext-row strong {
+  display: block;
+  color: var(--text);
+  font-size: 16px;
+}
+.ext-row span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ext-row .primary-action {
+  flex: 0 0 auto;
+  text-decoration: none;
+}
+.ext-steps {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 9px;
+  color: #d8dff0;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.ext-steps code,
+.ext-foot code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.92em;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.ext-foot {
+  margin: 0;
+  color: var(--faint);
+  font-size: 12.5px;
+  line-height: 1.55;
 }
 
 /* Gmail (minimal) */
@@ -904,11 +961,13 @@ body {
   min-height: 74px;
   background: rgba(6, 7, 14, 0.74);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+  z-index: 70; /* stay above the docked side panels */
 }
 
 .nav-side {
   display: flex;
   align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 .nav-left { justify-content: flex-start; }
@@ -1008,15 +1067,22 @@ body {
 
 .dash-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  grid-template-columns: 1fr;
   gap: clamp(24px, 5vw, 64px);
   align-items: end;
 }
 
 .dash-title {
-  max-width: 760px;
-  font-size: clamp(48px, 7vw, 104px);
+  max-width: 620px;
+  font-size: clamp(38px, 5.2vw, 80px);
+  line-height: 1.05;
   text-transform: uppercase;
+  /* Never spill past three lines. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .dash-signal,
@@ -2308,5 +2374,199 @@ body {
   .auth-kicker-dot,
   .auth-card {
     animation: none !important;
+  }
+}
+
+/* ============================================================================
+   POST-LOGIN PRODUCT UI — Inter typeface + sharp (un-rounded) corners.
+   Scoped to .product-shell but NOT the pre-login auth screen, so the login
+   page keeps its own styling. Monospaced accents are deliberately preserved,
+   and round dots/orbs stay round — only rounded rectangles are squared off.
+   ============================================================================ */
+.product-shell:not(.auth-screen),
+.product-shell:not(.auth-screen) * {
+  font-family: "Inter", "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+}
+
+/* Keep the IBM Plex Mono accents (kickers, labels, codes, chips, step tiles). */
+.product-shell:not(.auth-screen) .mono-kicker,
+.product-shell:not(.auth-screen) .privacy-pill,
+.product-shell:not(.auth-screen) .primary-action,
+.product-shell:not(.auth-screen) .field label,
+.product-shell:not(.auth-screen) .pipe-card-label,
+.product-shell:not(.auth-screen) .tab-row button,
+.product-shell:not(.auth-screen) .panel-note,
+.product-shell:not(.auth-screen) .source-count,
+.product-shell:not(.auth-screen) .gmail-status,
+.product-shell:not(.auth-screen) .email-meta,
+.product-shell:not(.auth-screen) .dash-signal span,
+.product-shell:not(.auth-screen) .gmail-search button,
+.product-shell:not(.auth-screen) .report-mono,
+.product-shell:not(.auth-screen) .report-nav-btn,
+.product-shell:not(.auth-screen) .report-urgency,
+.product-shell:not(.auth-screen) .report-label,
+.product-shell:not(.auth-screen) .report-pipeline-chip,
+.product-shell:not(.auth-screen) .report-flow-tag,
+.product-shell:not(.auth-screen) .report-flow-node,
+.product-shell:not(.auth-screen) .report-chat-note,
+.product-shell:not(.auth-screen) .report-count,
+.product-shell:not(.auth-screen) .report-check-due,
+.product-shell:not(.auth-screen) .report-row .report-date,
+.product-shell:not(.auth-screen) .report-row .report-contact,
+.product-shell:not(.auth-screen) .report-ask button,
+.product-shell:not(.auth-screen) .report-steps li::before {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* No rounded rectangles — square everything except the round dots/orbs. */
+.product-shell:not(.auth-screen)
+  *:not(.brand-pulse):not(.pipeline-orb):not(.pipe-card-orb):not(.pipe-dot):not(.report-orb) {
+  border-radius: 0;
+}
+
+/* ============================================================================
+   FOLLOW-UP CHAT — docked right sidebar (collapsible), like a chat panel.
+   Replaces the old bottom-of-page chat section. The message list scrolls and
+   the composer is pinned to the bottom of the panel.
+   ============================================================================ */
+.report-chat-panel {
+  position: fixed;
+  top: calc(var(--nav-h, 80px) + 2px); /* measured nav height, set in JS */
+  right: 0;
+  bottom: 0;
+  width: min(380px, 90vw);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(180deg, #0b1020 0%, #080a14 100%);
+  box-shadow: -26px 0 64px rgba(0, 0, 0, 0.4);
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 60;
+}
+.report-chat-panel.open {
+  transform: translateX(0);
+}
+
+.report-chat-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 18px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.report-chat-close {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.16s, border-color 0.16s;
+}
+.report-chat-close:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Message list fills the panel and scrolls; override the old inline-flow caps. */
+.report-chat-panel .report-chat {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.report-chat-panel-foot {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 14px 18px 16px;
+  background: rgba(0, 0, 0, 0.22);
+}
+.report-chat-panel-foot .report-chat-note {
+  margin: 10px 0 0;
+}
+
+/* Wide screens: shift the report content (not the nav) so nothing hides under
+   the panel. Below 1101px the panel becomes an overlay drawer. */
+@media (min-width: 1101px) {
+  .report-shell.chat-open .report-body {
+    padding-right: min(404px, 92vw);
+  }
+}
+
+/* Bubbles hug their content and never overflow the narrow panel. */
+.report-chat-panel .report-bubble {
+  max-width: 100%;
+  width: fit-content;
+  overflow-wrap: anywhere;
+}
+.report-chat-panel .report-bubble.user {
+  justify-self: end;
+}
+
+/* ============================================================================
+   ANALYSIS HISTORY — docked left sidebar on the dashboard (collapsible).
+   Mirrors the chat panel: scrolling list, toggled from the nav.
+   ============================================================================ */
+.history-panel {
+  position: fixed;
+  top: calc(var(--nav-h, 80px) + 2px); /* measured nav height, set in JS */
+  left: 0;
+  bottom: 0;
+  width: min(320px, 90vw);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(180deg, #0b1020 0%, #080a14 100%);
+  box-shadow: 26px 0 64px rgba(0, 0, 0, 0.4);
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 60;
+}
+.history-panel.open {
+  transform: translateX(0);
+}
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 18px 4px;
+}
+.history-head .panel-title {
+  font-size: 16px;
+}
+.history-note {
+  display: block;
+  padding: 0 18px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.history-list-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 16px 18px;
+}
+.history-list-wrap .saved-list {
+  margin-top: 6px;
+}
+.history-list-wrap .muted-line {
+  padding: 10px 2px;
+}
+
+/* Wide screens: shift the dashboard content (not the nav) so nothing hides
+   under the rail. Below 1101px the rail becomes an overlay drawer. */
+@media (min-width: 1101px) {
+  .product-shell.history-open .dash-body {
+    padding-left: min(344px, 92vw);
   }
 }

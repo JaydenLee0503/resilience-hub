@@ -51,6 +51,18 @@ The context is privacy-tokenized: real dates, amounts, names, and IDs appear as 
 
 If the answer is not in the context, say you do not see it in the report and suggest checking the original document or a qualified professional. Reply in 2-4 short sentences at a grade-6 reading level, second person ("you"). Plain text only — no JSON, no markdown.`;
 
+// Quick summarizer for the Chrome extension — condenses a page/PDF into a short
+// plain-language brief. The text it receives is tokenized (no real PII); tokens
+// must be preserved exactly so the device can re-hydrate them for the user.
+const SUMMARIZE_SYSTEM_PROMPT = `You are a concise summarizer inside Beacon Atlas. Summarize the document the user gives you so a stressed person can grasp it fast.
+
+The text is privacy-tokenized: real dates, amounts, names, and IDs appear as tokens like [DATE_1] or [AMOUNT_1]. Keep these tokens EXACTLY as they appear. Never invent or guess the real value behind a token.
+
+Reply in plain text at a grade-6 reading level, second person ("you"):
+- One sentence saying what the document is.
+- Then 3 to 5 short "- " bullet points covering what matters, any deadline, and what to do next.
+No JSON, no markdown headings, no preamble — just the sentence and the bullets.`;
+
 // ─── Import pipeline modules ─────────────────────────────────────────────────
 async function loadPipelines() {
   const { classifyDocument } = await import('../src/agents/pipelines/classifier.js');
@@ -115,8 +127,10 @@ Tokens like [DATE_1] must appear exactly as-is in the output.
 }
 
 // ─── CORS headers ────────────────────────────────────────────────────────────
+// '*' so both the Vite app (localhost:5173) and the Chrome extension
+// (chrome-extension://…) can reach this dev server. No credentials are used.
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': 'http://localhost:5173',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -133,6 +147,10 @@ async function handleRequest(req, res, pipelines) {
 
   if (req.method === 'POST' && req.url === '/api/chat') {
     return handleChat(req, res);
+  }
+
+  if (req.method === 'POST' && req.url === '/api/summarize') {
+    return handleSummarize(req, res);
   }
 
   if (req.method !== 'POST' || req.url !== '/api/analyze') {
@@ -316,6 +334,80 @@ async function handleChat(req, res) {
   res.end(JSON.stringify({ answer: answer || 'I could not find an answer in your report. Check the original document or a qualified professional.' }));
 }
 
+// ─── Summarizer handler (Chrome extension) ──────────────────────────────────
+async function handleSummarize(req, res) {
+  let body = '';
+  for await (const chunk of req) body += chunk;
+
+  let text;
+  try {
+    ({ text } = JSON.parse(body));
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+    return;
+  }
+
+  if (!text || typeof text !== 'string' || text.trim().length < 30) {
+    res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: 'text is required (min 30 chars)' }));
+    return;
+  }
+
+  // The Guardian runs on the device before this; the text must already be tokenized.
+  const residualPii = auditRawPii(text);
+  if (residualPii.length) {
+    res.writeHead(422, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: `Guardian blocked this summary because the text still looks sensitive: ${residualPii.join(', ')}` }));
+    return;
+  }
+
+  if (!API_KEY) {
+    res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ summary: 'Demo mode: no AI key is set, so I can\'t generate a live summary. Set FEATHERLESS_API_KEY in .env and restart the dev server.' }));
+    return;
+  }
+
+  const truncated = text.length > 8000 ? `${text.slice(0, 8000)}\n[Truncated due to context limits]` : text;
+
+  let featherlessRes;
+  try {
+    featherlessRes = await fetch(`${FEATHERLESS_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: FEATHERLESS_MODEL,
+        temperature: 0.2,
+        max_tokens: 500,
+        messages: [
+          { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
+          { role: 'user', content: `Summarize this tokenized document:\n\n${truncated.trim()}` },
+        ],
+      }),
+    });
+  } catch (err) {
+    console.error('[summarize] Featherless fetch failed:', err.message);
+    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: 'Failed to reach AI service. Check your network.' }));
+    return;
+  }
+
+  if (!featherlessRes.ok) {
+    const errBody = await featherlessRes.text().catch(() => '');
+    console.error(`[summarize] Featherless error ${featherlessRes.status}:`, errBody.slice(0, 200));
+    res.writeHead(502, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    res.end(JSON.stringify({ error: `AI service error: ${featherlessRes.status}` }));
+    return;
+  }
+
+  const data = await featherlessRes.json();
+  const summary = (data.choices?.[0]?.message?.content ?? '').trim();
+  console.log('[summarize] summarized a document for the extension');
+
+  res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+  res.end(JSON.stringify({ summary: summary || 'No summary could be generated. Try the full analysis in the dashboard instead.' }));
+}
+
 function parseModelJson(rawText, pipelineType, tokenizedText) {
   const fence = '```';
   const clean = String(rawText || '')
@@ -442,7 +534,7 @@ loadPipelines().then((pipelines) => {
 
   server.listen(PORT, () => {
     console.log(`\n[Resilience Hub dev server] listening on http://localhost:${PORT}`);
-    console.log('[Resilience Hub dev server] API key: set ✓');
-    console.log('[Resilience Hub dev server] Route: POST /api/analyze\n');
+    console.log(`[Resilience Hub dev server] API key: ${API_KEY ? 'set ✓' : 'missing (demo mode)'}`);
+    console.log('[Resilience Hub dev server] Routes: POST /api/analyze, /api/chat, /api/summarize\n');
   });
 });

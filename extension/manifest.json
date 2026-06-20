@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Beacon Atlas PDF Sender",
-  "version": "0.1.0",
-  "description": "Read visible PDF text from the current browser tab and send it to the local Beacon Atlas app.",
-  "permissions": ["activeTab", "scripting", "tabs"],
-  "host_permissions": ["<all_urls>", "http://localhost:5173/*", "http://127.0.0.1:5173/*"],
+  "name": "Beacon Atlas",
+  "version": "0.2.1",
+  "description": "Summarize or send the current PDF/page to Beacon Atlas. PII is tokenized in your browser before any AI sees it.",
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "host_permissions": ["<all_urls>"],
   "action": {
-    "default_title": "Send PDF to Beacon Atlas",
+    "default_title": "Beacon Atlas",
     "default_popup": "popup.html"
-  }
+  },
+  "options_page": "options.html"
 }

@@ -28,6 +28,7 @@ export default function Dashboard({
   const [reports, setReports] = useState([]);
   const [reportsBusy, setReportsBusy] = useState(true);
   const [fileBusy, setFileBusy] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
 
   const [gmailToken, setGmailToken] = useState('');
   const [gmailQuery, setGmailQuery] = useState('newer_than:90d (deadline OR appointment OR renewal OR notice OR due)');
@@ -37,8 +38,23 @@ export default function Dashboard({
   const [gmailStatus, setGmailStatus] = useState('');
 
   const fileInput = useRef(null);
+  const shellRef = useRef(null);
 
   const pipeline = useMemo(() => PIPELINES.find((item) => item.id === selectedPipeline) ?? PIPELINES.at(-1), [selectedPipeline]);
+
+  // Drive the docked side-panel offset from the real nav height so it never
+  // tucks under (or floats below) the sticky nav at any zoom / breakpoint.
+  useEffect(() => {
+    const shell = shellRef.current;
+    const nav = shell?.querySelector('.product-nav');
+    if (!shell || !nav) return;
+    const apply = () => shell.style.setProperty('--nav-h', `${nav.offsetHeight}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(nav);
+    window.addEventListener('resize', apply);
+    return () => { ro.disconnect(); window.removeEventListener('resize', apply); };
+  }, []);
 
   useEffect(() => {
     if (!initialText) return;
@@ -171,8 +187,14 @@ export default function Dashboard({
   }
 
   return (
-    <div className="product-shell">
-      <ProductNav account={account} onBack={onBack} onLogout={onLogout} />
+    <div className={`product-shell ${historyOpen ? 'history-open' : ''}`} ref={shellRef}>
+      <ProductNav
+        account={account}
+        onBack={onBack}
+        onLogout={onLogout}
+        historyOpen={historyOpen}
+        onToggleHistory={() => setHistoryOpen((v) => !v)}
+      />
 
       <main className="dash-body">
         <header className="dash-hero">
@@ -183,11 +205,6 @@ export default function Dashboard({
               Pick the navigator that fits, upload a PDF or connect Gmail, and get a calm,
               structured set of next steps with deadlines, risks, and who can help.
             </p>
-          </div>
-          <div className="dash-signal" aria-label="Privacy signal">
-            <span>Guardian</span>
-            <strong>Local tokenization</strong>
-            <small>Raw files stay in your browser before analysis.</small>
           </div>
         </header>
 
@@ -222,9 +239,10 @@ export default function Dashboard({
           <div className="tab-row">
             <button className={inputMode === 'document' ? 'active' : ''} onClick={() => setInputMode('document')}>PDF / text</button>
             <button className={inputMode === 'gmail' ? 'active' : ''} onClick={() => setInputMode('gmail')}>Gmail reader</button>
+            <button className={inputMode === 'extension' ? 'active' : ''} onClick={() => setInputMode('extension')}>Browser extension</button>
           </div>
 
-          {inputMode === 'document' ? (
+          {inputMode === 'document' && (
             <div className="doc-input">
               <div className="upload-strip">
                 <div>
@@ -247,7 +265,9 @@ export default function Dashboard({
                 <button className="primary-action" onClick={submitText} disabled={fileBusy}>Analyze with {pipeline.title}</button>
               </div>
             </div>
-          ) : (
+          )}
+
+          {inputMode === 'gmail' && (
             <div className="gmail-min">
               <div className="gmail-connect-row">
                 <div>
@@ -299,35 +319,64 @@ export default function Dashboard({
               </div>
             </div>
           )}
+
+          {inputMode === 'extension' && (
+            <div className="ext-panel">
+              <div className="ext-row">
+                <div>
+                  <strong>Beacon Atlas for Chrome</strong>
+                  <span>
+                    Read the PDF or page in your current browser tab and send its text straight
+                    to this dashboard. PII is tokenized in your browser before any AI sees it.
+                  </span>
+                </div>
+                <a className="primary-action" href="/beacon-atlas-extension.zip" download>Download .zip</a>
+              </div>
+              <ol className="ext-steps">
+                <li>Unzip the download, then open <code>chrome://extensions</code>.</li>
+                <li>Turn on <strong>Developer mode</strong>, then click <strong>Load unpacked</strong>.</li>
+                <li>Select the unzipped <code>beacon-atlas-extension</code> folder.</li>
+                <li>Open a PDF or page, click the Beacon Atlas icon, then <strong>Send current tab</strong>.</li>
+              </ol>
+              <p className="ext-foot">
+                For local <code>file://</code> PDFs, enable “Allow access to file URLs” on the
+                extension’s details page. Scanned image-only PDFs have no selectable text yet.
+              </p>
+            </div>
+          )}
         </section>
 
         {error && <p className="dash-error">{error}</p>}
-
-        {(reportsBusy || reports.length > 0) && (
-          <section className="saved">
-            <div className="panel-head">
-              <span className="panel-title">Your saved reports</span>
-              <span className="panel-note">Private to this account</span>
-            </div>
-            {reportsBusy ? (
-              <p className="muted-line">Loading your reports...</p>
-            ) : (
-              <ul className="saved-list">
-                {reports.map((r) => (
-                  <li key={r.id} className="saved-row" onClick={() => onOpenReport?.(r)}>
-                    <span className={`report-orb urgency-${r.urgency || 'medium'}`} />
-                    <span className="saved-main">
-                      <strong>{r.source || 'Untitled document'}</strong>
-                      <small>{(PIPELINE_LABELS[r.pipeline_type] || r.pipeline_type)} - {new Date(r.created_at).toLocaleDateString()}</small>
-                    </span>
-                    <button className="del-link" onClick={(e) => removeReport(r.id, e)}>Delete</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
       </main>
+
+      {/* ── AI analysis history — docked sidebar ── */}
+      <aside className={`history-panel ${historyOpen ? 'open' : ''}`} aria-hidden={!historyOpen}>
+        <div className="history-head">
+          <span className="panel-title">Analysis history</span>
+          <button className="report-chat-close" onClick={() => setHistoryOpen(false)} aria-label="Hide history">×</button>
+        </div>
+        <span className="panel-note history-note">Private to this account</span>
+        <div className="history-list-wrap">
+          {reportsBusy ? (
+            <p className="muted-line">Loading your reports...</p>
+          ) : reports.length === 0 ? (
+            <p className="muted-line">No saved analyses yet. Run one and it will appear here.</p>
+          ) : (
+            <ul className="saved-list">
+              {reports.map((r) => (
+                <li key={r.id} className="saved-row" onClick={() => onOpenReport?.(r)}>
+                  <span className={`report-orb urgency-${r.urgency || 'medium'}`} />
+                  <span className="saved-main">
+                    <strong>{r.source || 'Untitled document'}</strong>
+                    <small>{(PIPELINE_LABELS[r.pipeline_type] || r.pipeline_type)} - {new Date(r.created_at).toLocaleDateString()}</small>
+                  </span>
+                  <button className="del-link" onClick={(e) => removeReport(r.id, e)}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
