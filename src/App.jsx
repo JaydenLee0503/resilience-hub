@@ -799,7 +799,7 @@ export default function App() {
 
     const timer = window.setTimeout(() => {
       const tryButtons = [...host.querySelectorAll('button')].filter((b) =>
-        b.textContent.includes('Try')
+        b.textContent.includes('Try') || b.textContent.includes('Get started')
       );
       const handler = () => setView(account ? 'dashboard' : 'login');
       tryButtons.forEach((b) => b.addEventListener('click', handler));
