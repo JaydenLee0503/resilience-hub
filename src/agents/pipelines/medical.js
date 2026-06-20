@@ -56,7 +56,7 @@ Empty arrays are allowed; do not omit any key.
 {
   "pipeline_type": "medical",
   "urgency": "low | medium | high | critical",
-  "plain_language_summary": "3–5 sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know.",
+  "plain_language_summary": "1–2 short sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know — keep it brief and direct.",
   "what_matters": ["Plain string — the key fact, instruction, or warning sign from this document"],
   "what_happens_if_ignored": ["Plain string — specific harm. Not vague ('may affect health'). Concrete ('if you miss the follow-up by [DATE_1], the wound may get infected')."],
   "what_to_do_next": ["Plain active-voice instruction. Start with a verb. Include the token for any date, amount, or phone number."],

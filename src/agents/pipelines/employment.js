@@ -52,7 +52,7 @@ Empty arrays are allowed; do not omit any key.
 {
   "pipeline_type": "employment",
   "urgency": "low | medium | high | critical",
-  "plain_language_summary": "3–5 sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know.",
+  "plain_language_summary": "1–2 short sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know — keep it brief and direct.",
   "what_matters": ["Plain string — the key term, deadline, or right from this document"],
   "what_happens_if_ignored": ["Plain string — specific harm ('if you sign by [DATE_1], you give up the right to sue the company for how you were fired')."],
   "what_to_do_next": ["Plain active-voice instruction. Start with a verb. Include the token for any date, amount, or phone number."],

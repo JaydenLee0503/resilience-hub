@@ -52,7 +52,7 @@ Empty arrays are allowed; do not omit any key.
 {
   "pipeline_type": "housing",
   "urgency": "low | medium | high | critical",
-  "plain_language_summary": "3–5 sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know.",
+  "plain_language_summary": "1–2 short sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know — keep it brief and direct.",
   "what_matters": ["Plain string — the key deadline, amount, or right from this notice"],
   "what_happens_if_ignored": ["Plain string — specific harm. Not vague ('you could lose housing'). Concrete ('if you do not pay [AMOUNT_1] by [DATE_1], the landlord can ask the court to evict you')."],
   "what_to_do_next": ["Plain active-voice instruction. Start with a verb. Include the token for any date, amount, or address."],

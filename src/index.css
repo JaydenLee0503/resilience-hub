@@ -92,6 +92,28 @@ body {
   overflow-x: hidden;
 }
 
+/* Dark-blue scrollbars across the whole app (page + scrollable panels). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a8a transparent; /* Firefox: thumb / track */
+}
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #1e3a8a; /* dark blue */
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #27499f;
+  background-clip: padding-box;
+}
+
 .beacon-app,
 .beacon-app * {
   font-family: "D-DIN Bold", "D-DIN", "DIN Alternate", "Arial Narrow", Arial, sans-serif !important;
@@ -1299,9 +1321,10 @@ body {
   font-family: "D-DIN Bold", "D-DIN", "DIN Alternate", "Arial Narrow", Arial, sans-serif;
 }
 .report-body {
-  max-width: 1120px;
+  max-width: 1000px;
   padding-left: clamp(20px, 4vw, 44px);
   padding-right: clamp(20px, 4vw, 44px);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .report-product-brand {
   gap: 10px;
@@ -1332,8 +1355,8 @@ body {
   background: rgba(255, 255, 255, 0.03);
 }
 .report-lead {
-  font-size: clamp(24px, 3vw, 40px);
-  line-height: 1.18;
+  font-size: clamp(19px, 2.3vw, 30px);
+  line-height: 1.22;
   text-transform: uppercase;
 }
 .report-flow,
@@ -2489,7 +2512,9 @@ body {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Message list fills the panel and scrolls; override the old inline-flow caps. */
+/* Message list fills the panel and scrolls; override the old inline-flow caps.
+   Pack rows to content height at the top — otherwise the grid stretches its
+   auto rows to fill the tall panel and every bubble balloons vertically. */
 .report-chat-panel .report-chat {
   flex: 1;
   min-height: 0;
@@ -2497,6 +2522,8 @@ body {
   margin: 0;
   padding: 18px;
   overflow-y: auto;
+  align-content: start;
+  align-items: start;
 }
 
 .report-chat-panel-foot {
@@ -2507,20 +2534,46 @@ body {
 .report-chat-panel-foot .report-chat-note {
   margin: 10px 0 0;
 }
+/* Composer: keep the input + send button a consistent, comfortable size inside
+   the narrow docked panel so the field never renders squashed or oversized. */
+.report-chat-panel-foot .report-ask {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+.report-chat-panel-foot .report-ask input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+}
+.report-chat-panel-foot .report-ask button {
+  height: 44px;
+  padding: 0 16px;
+}
 
-/* Wide screens: shift the report content (not the nav) so nothing hides under
-   the panel. Below 1101px the panel becomes an overlay drawer. */
-@media (min-width: 1101px) {
+/* When the chat opens, get the report out from under the panel.
+   The 900px content + 380px panel fit side by side from ~1280px up, so from
+   there we just SLIDE the whole block left at full width (shift = half the
+   panel width re-centers the otherwise margin:auto-centered content) — no
+   shrinking. In the narrow 1101–1279px range they can't both fit, so fall
+   back to gently narrowing the content. Below 1101px the panel is a drawer. */
+@media (min-width: 1280px) {
+  .report-shell.chat-open .report-body {
+    transform: translateX(-190px); /* min(380px panel) / 2 */
+  }
+}
+@media (min-width: 1101px) and (max-width: 1279px) {
   .report-shell.chat-open .report-body {
     padding-right: min(404px, 92vw);
   }
 }
 
-/* Bubbles hug their content and never overflow the narrow panel. */
+/* Bubbles hug their content, cap at a comfortable measure (so long answers
+   wrap into a readable column instead of filling the whole panel), and only
+   break words when one is genuinely too long for the line. */
 .report-chat-panel .report-bubble {
-  max-width: 100%;
+  max-width: 85%;
   width: fit-content;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .report-chat-panel .report-bubble.user {
   justify-self: end;

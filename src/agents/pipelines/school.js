@@ -53,7 +53,7 @@ Empty arrays are allowed; do not omit any key.
 {
   "pipeline_type": "school",
   "urgency": "low | medium | high | critical",
-  "plain_language_summary": "3–5 sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the student or parent must know.",
+  "plain_language_summary": "1–2 short sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the student or parent must know — keep it brief and direct.",
   "what_matters": ["Plain string — the key deadline, requirement, or right from this letter"],
   "what_happens_if_ignored": ["Plain string — specific harm ('if you do not appeal by [DATE_1], the suspension stays on the record and you cannot return until [DATE_2]')."],
   "what_to_do_next": ["Plain active-voice instruction. Start with a verb. Include the token for any date, amount, or form number."],

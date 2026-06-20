@@ -146,9 +146,6 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
           <p className="report-lead">{d.plain_language_summary}</p>
         </header>
 
-        {/* ── Privacy trace: what happened to your data during this analysis ── */}
-        <PrivacyTrace guardianStats={guardianStats} />
-
         {/* ── What matters ── */}
         {(d.what_matters ?? []).length > 0 && (
           <section className="report-section">
@@ -280,6 +277,9 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
             </ul>
           </section>
         )}
+
+        {/* ── Privacy trace: what happened to your data during this analysis ── */}
+        <PrivacyTrace guardianStats={guardianStats} />
 
         {/* ── Disclaimer ── */}
         <p className="report-disclaimer">

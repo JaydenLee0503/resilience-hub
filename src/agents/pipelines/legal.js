@@ -52,7 +52,7 @@ Empty arrays are allowed; do not omit any key.
 {
   "pipeline_type": "legal",
   "urgency": "low | medium | high | critical",
-  "plain_language_summary": "3–5 sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know.",
+  "plain_language_summary": "1–2 short sentences at grade-6 level. Second person ('you'). State the document type and the single most important thing the person must know — keep it brief and direct.",
   "what_matters": ["Plain string — the key obligation, claim, or deadline from this document"],
   "what_happens_if_ignored": ["Plain string — specific harm. Not vague ('legal trouble'). Concrete ('if you do not respond by [DATE_1], the court can rule against you without hearing your side')."],
   "what_to_do_next": ["Plain active-voice instruction. Start with a verb. Include the token for any date, amount, or case number."],
