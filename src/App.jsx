@@ -278,6 +278,7 @@ function useBeaconAnimations(hostRef, active = true) {
       tcards: [...root.querySelectorAll('[data-tcard]')],
       pipeTrack: root.querySelector('[data-pipe-track]'),
       pipeProgress: root.querySelector('[data-pipe-progress]'),
+      pipeCards: [...root.querySelectorAll('[data-pipe-card]')],
       globalText: root.querySelector('[data-global-text]'),
       globalStats: root.querySelector('[data-global-stats]'),
       words: [...root.querySelectorAll('[data-word]')],
@@ -313,13 +314,49 @@ function useBeaconAnimations(hostRef, active = true) {
       });
     };
 
+    const PIPE_CARD_DEFAULT_BG = 'linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85))';
     const scenePipelines = (progress) => {
       const track = cache.pipeTrack;
       if (!track) return;
-      const maxOffset = track.scrollWidth - window.innerWidth + 40;
+      const cards = cache.pipeCards;
+      // Scroll until the LAST card reaches the viewport center, so every pipeline
+      // (through Housing and Employment) passes through the middle and lights up —
+      // otherwise the track stops short and ends on Financial Assistance.
+      let maxOffset = track.scrollWidth - window.innerWidth + 40;
+      if (cards && cards.length) {
+        const last = cards[cards.length - 1];
+        maxOffset = last.offsetLeft + last.offsetWidth / 2 - window.innerWidth / 2;
+      }
+      maxOffset = Math.max(0, maxOffset);
       const eased = clamp(progress, 0, 1);
-      track.style.transform = `translateX(${-Math.max(0, maxOffset) * eased}px)`;
+      track.style.transform = `translateX(${-maxOffset * eased}px)`;
       if (cache.pipeProgress) cache.pipeProgress.style.width = `${14 + eased * 86}%`;
+
+      // Light up whichever card is currently centered in the viewport, tinting it
+      // with its own badge gradient (data-accent) so the palette swatch "fills" the
+      // card as you scroll the track sideways.
+      if (cards && cards.length) {
+        const centerX = window.innerWidth / 2;
+        let activeIndex = 0;
+        let bestDist = Infinity;
+        cards.forEach((card, index) => {
+          const rect = card.getBoundingClientRect();
+          const dist = Math.abs(rect.left + rect.width / 2 - centerX);
+          if (dist < bestDist) { bestDist = dist; activeIndex = index; }
+        });
+        cards.forEach((card, index) => {
+          if (index === activeIndex) {
+            const [c0, c1] = (card.getAttribute('data-accent') || '#5b8cff,#7aa2ff').split(',');
+            card.style.background = `linear-gradient(155deg, ${hexRgba(c0, 0.62)}, ${hexRgba(c1 || c0, 0.30)} 52%, rgba(9,11,19,.86))`;
+            card.style.borderColor = hexRgba(c0, 0.8);
+            card.style.boxShadow = `0 28px 72px -26px ${hexRgba(c0, 0.7)}`;
+          } else {
+            card.style.background = PIPE_CARD_DEFAULT_BG;
+            card.style.borderColor = 'var(--border)';
+            card.style.boxShadow = 'none';
+          }
+        });
+      }
     };
 
     const sceneGlobal = (progress) => {
@@ -527,7 +564,16 @@ function useBeaconAnimations(hostRef, active = true) {
       if (!target) return;
       event.preventDefault();
       const navHeight = nav ? nav.getBoundingClientRect().height : 72;
-      const destY = Math.max(0, window.scrollY + target.getBoundingClientRect().top - navHeight - 12);
+      const rect = target.getBoundingClientRect();
+      const sectionTopAbs = window.scrollY + rect.top;
+      let destY = Math.max(0, sectionTopAbs - navHeight - 12);
+      // Pinned scenes reveal their content partway through their scroll length.
+      // The Global scene's text fades in by progress ~0.35 (see sceneGlobal), so
+      // landing at the section top leaves it invisible — aim deeper so it shows.
+      if (target.getAttribute('data-scene') === 'global') {
+        const total = rect.height - window.innerHeight;
+        if (total > 0) destY = Math.max(0, sectionTopAbs + total * 0.42);
+      }
       smoothScrollTo(destY);
     };
     jumpLinks.forEach((link) => link.addEventListener('click', onJump));

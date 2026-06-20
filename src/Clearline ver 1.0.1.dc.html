@@ -92,7 +92,7 @@
         <span style="position:absolute;width:15px;height:15px;border-radius:50%;border:1px solid rgba(160,107,255,.6);"></span>
         <span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 12px rgba(123,140,255,.9);"></span>
       </span>
-      <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:18px;letter-spacing:.06em;text-transform:uppercase;">Beacon&nbsp;Atlas</span>
+      <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:18px;letter-spacing:.06em;text-transform:uppercase;">Clearline</span>
     </a>
     <div style="display:flex;align-items:center;gap:clamp(18px,2.7vw,46px);">
       <a href="#" style="text-decoration:none;font-family:'Archivo',sans-serif;font-weight:700;font-size:14px;letter-spacing:.03em;text-transform:uppercase;color:rgba(255,255,255,.8);white-space:nowrap;transition:color .2s;cursor:pointer;" data-jump="sec-platform" style-hover="color:#fff;">Platform</a>
@@ -236,8 +236,18 @@
           <div data-chip data-from="-300,-300,-20" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#febc2e;"></span><span style="font-size:13px;font-weight:600;">Appeal deadline: 30d</span></div>
           <div data-chip data-from="330,-340,16" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:12px;background:rgba(15,18,30,.95);border:1px solid var(--border);box-shadow:0 16px 40px -18px rgba(0,0,0,.8);will-change:transform;"><span style="width:8px;height:8px;border-radius:2px;background:#a06bff;"></span><span style="font-size:13px;font-weight:600;">Form I-589, 12 pages</span></div>
         </div>
-        <div data-clarity-tag style="position:absolute;left:50%;bottom:-58px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:9px;padding:9px 16px;border-radius:999px;background:linear-gradient(135deg,rgba(91,140,255,.16),rgba(160,107,255,.16));border:1px solid rgba(123,140,255,.4);font-size:13px;font-weight:600;color:#cdd6ff;opacity:0;white-space:nowrap;"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 10px var(--a);"></span>Organized by Clearline</div>
       </div>
+    </div>
+  </section>
+
+  <!-- ================= MISSION (pinned word reveal) ================= -->
+  <section data-scene="mission" style="position:relative;height:200vh;">
+    <div style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:104px 24px 40px;text-align:center;overflow:hidden;box-sizing:border-box;">
+      <div style="position:absolute;width:800px;height:800px;max-width:120vw;border-radius:50%;background:radial-gradient(circle,rgba(160,107,255,.10),transparent 60%);"></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--faint);margin-bottom:34px;position:relative;z-index:2;">Our mission</div>
+      <p data-mission style="position:relative;z-index:2;font-family:'Archivo',sans-serif;font-weight:500;font-size:clamp(28px,4.6vw,60px);line-height:1.18;letter-spacing:-.02em;max-width:18ch;margin:0;color:#fff;">
+        <span data-word style="opacity:.12;transition:opacity .2s;display:inline-block;">No</span> <span data-word style="opacity:.12;display:inline-block;">one</span> <span data-word style="opacity:.12;display:inline-block;">should</span> <span data-word style="opacity:.12;display:inline-block;">miss</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">help,</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">rights,</span> <span data-word style="opacity:.12;display:inline-block;">or</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">deadlines</span> <span data-word style="opacity:.12;display:inline-block;">because</span> <span data-word style="opacity:.12;display:inline-block;">the</span> <span data-word style="opacity:.12;display:inline-block;">paperwork</span> <span data-word style="opacity:.12;display:inline-block;">was</span> <span data-word style="opacity:.12;display:inline-block;">too</span> <span data-word style="opacity:.12;display:inline-block;">hard</span> <span data-word style="opacity:.12;display:inline-block;">to</span> <span data-word style="opacity:.12;display:inline-block;">read.</span>
+      </p>
     </div>
   </section>
 
@@ -287,7 +297,7 @@
       </div>
       <div data-pipe-track style="display:flex;gap:24px;padding:0 max(40px,calc((100vw - 1180px)/2));will-change:transform;">
         <!-- panel template -->
-        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+        <div data-pipe-card data-accent="#5b8cff,#7aa2ff" style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease;">
           <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">01 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#7aa2ff);"></span></div>
           <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Immigration</h3>
           <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Refugee, asylum, and visa paperwork — translated into rights, dates, and the exact forms that come next.</p>
@@ -298,7 +308,7 @@
             <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Missing forms &amp; filing windows</div>
           </div>
         </div>
-        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+        <div data-pipe-card data-accent="#a06bff,#c08bff" style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease;">
           <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">02 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#a06bff,#c08bff);"></span></div>
           <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Medical</h3>
           <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Discharge summaries, insurance denials, and bills — turned into follow-ups, deadlines, and dispute paths.</p>
@@ -309,7 +319,7 @@
             <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Appeal windows for denials</div>
           </div>
         </div>
-        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+        <div data-pipe-card data-accent="#5b8cff,#a06bff" style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease;">
           <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">03 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#a06bff);"></span></div>
           <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">School</h3>
           <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Financial aid, enrollment, and verification paperwork — decoded into what your family needs to submit, and when.</p>
@@ -320,7 +330,7 @@
             <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Amounts &amp; conditions</div>
           </div>
         </div>
-        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+        <div data-pipe-card data-accent="#7aa2ff,#a06bff" style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease;">
           <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">04 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#7aa2ff,#a06bff);"></span></div>
           <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Legal</h3>
           <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Notices, summons, and disputes — clarified into your rights, response deadlines, and how to find representation.</p>
@@ -331,7 +341,7 @@
             <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Free legal-aid options</div>
           </div>
         </div>
-        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
+        <div data-pipe-card data-accent="#5b8cff,#7aa2ff" style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease;">
           <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">05 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#7aa2ff);"></span></div>
           <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Financial assistance</h3>
           <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Benefits letters and assistance programs — turned into eligibility, required proof, and appeal routes.</p>
@@ -342,26 +352,26 @@
             <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>How to appeal a denial</div>
           </div>
         </div>
-        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">06 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#a06bff,#c08bff);"></span></div>
+        <div data-pipe-card data-accent="#13c8a0,#3fe0bd" style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">06 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#13c8a0,#3fe0bd);"></span></div>
           <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Housing</h3>
           <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">Eviction notices, lease disputes, and housing aid — translated into your rights, timelines, and next steps.</p>
           <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
             <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
-            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Notice period &amp; deadlines</div>
-            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Tenant rights in your area</div>
-            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--b);"></span>Emergency assistance</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:#13c8a0;"></span>Notice period &amp; deadlines</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:#13c8a0;"></span>Tenant rights in your area</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:#13c8a0;"></span>Emergency assistance</div>
           </div>
         </div>
-        <div style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">07 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#5b8cff,#a06bff);"></span></div>
+        <div data-pipe-card data-accent="#ff7a45,#ffa06b" style="flex:0 0 300px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(18,21,34,.85),rgba(9,11,19,.85));padding:24px 22px;display:flex;flex-direction:column;min-height:330px;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--faint);">07 / 07</span><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#ff7a45,#ffa06b);"></span></div>
           <h3 style="font-family:'Archivo',sans-serif;font-weight:600;font-size:21px;margin:16px 0 7px;">Employment</h3>
           <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px;">HR letters, warnings, and benefits documents — decoded into what's being asked and how to respond in time.</p>
           <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px;">
             <div style="font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);">Extracts</div>
-            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Response deadlines</div>
-            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Your rights &amp; options</div>
-            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:var(--a);"></span>Benefits you may be owed</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:#ff7a45;"></span>Response deadlines</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:#ff7a45;"></span>Your rights &amp; options</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#cdd4e6;"><span style="width:5px;height:5px;border-radius:50%;background:#ff7a45;"></span>Benefits you may be owed</div>
           </div>
         </div>
       </div>
@@ -440,17 +450,6 @@
     </div>
   </section>
 
-  <!-- ================= MISSION (pinned word reveal) ================= -->
-  <section data-scene="mission" style="position:relative;height:200vh;">
-    <div style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:104px 24px 40px;text-align:center;overflow:hidden;box-sizing:border-box;">
-      <div style="position:absolute;width:800px;height:800px;max-width:120vw;border-radius:50%;background:radial-gradient(circle,rgba(160,107,255,.10),transparent 60%);"></div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--faint);margin-bottom:34px;position:relative;z-index:2;">Our mission</div>
-      <p data-mission style="position:relative;z-index:2;font-family:'Archivo',sans-serif;font-weight:500;font-size:clamp(28px,4.6vw,60px);line-height:1.18;letter-spacing:-.02em;max-width:18ch;margin:0;color:#fff;">
-        <span data-word style="opacity:.12;transition:opacity .2s;display:inline-block;">No</span> <span data-word style="opacity:.12;display:inline-block;">one</span> <span data-word style="opacity:.12;display:inline-block;">should</span> <span data-word style="opacity:.12;display:inline-block;">miss</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">help,</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">rights,</span> <span data-word style="opacity:.12;display:inline-block;">or</span> <span data-word style="opacity:.12;display:inline-block;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">deadlines</span> <span data-word style="opacity:.12;display:inline-block;">because</span> <span data-word style="opacity:.12;display:inline-block;">the</span> <span data-word style="opacity:.12;display:inline-block;">paperwork</span> <span data-word style="opacity:.12;display:inline-block;">was</span> <span data-word style="opacity:.12;display:inline-block;">too</span> <span data-word style="opacity:.12;display:inline-block;">hard</span> <span data-word style="opacity:.12;display:inline-block;">to</span> <span data-word style="opacity:.12;display:inline-block;">read.</span>
-      </p>
-    </div>
-  </section>
-
   <!-- ================= FINAL CTA ================= -->
   <section style="position:relative;padding:160px 32px 0;overflow:hidden;">
     <div style="position:absolute;bottom:-30%;left:50%;transform:translateX(-50%);width:1000px;height:800px;background:radial-gradient(circle at 50% 80%,rgba(91,140,255,.24),rgba(160,107,255,.10) 40%,transparent 66%);pointer-events:none;"></div>
@@ -471,7 +470,7 @@
       <p style="margin:0;max-width:74ch;font-size:12.5px;line-height:1.6;color:var(--muted);">Sensitive details are swapped for tokens on your device before anything is sent — the AI only ever sees tokens, your raw document is never stored, and your real values are restored only for you.</p>
     </div>
     <!-- footer -->
-    <div style="position:relative;z-index:2;max-width:1180px;margin:30px auto 0;padding:30px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+    <div style="position:relative;z-index:2;max-width:840px;margin:30px auto 0;padding:30px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-wrap:wrap;gap:14px;text-align:center;">
       <div style="display:flex;align-items:center;gap:11px;">
         <div style="position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><div style="position:absolute;width:22px;height:22px;border-radius:50%;border:1px solid rgba(123,140,255,.4);"></div><div style="width:6px;height:6px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));"></div></div>
         <span style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;">Clearline</span>
