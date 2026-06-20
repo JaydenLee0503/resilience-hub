@@ -49,9 +49,11 @@ Right-click the extension → **Options** (or `chrome://extensions` → **Detail
 options**) to point it at your backend:
 
 - **Summarizer endpoint** — where **Summarize here** sends tokenized text.
-  - Local dev (default): `http://localhost:3001/api/summarize`
-  - Deployed: `https://<project-ref>.supabase.co/functions/v1/analyze`
-- **Dashboard URL** — where **Send to dashboard** opens (default `http://localhost:5173/`).
+  - Deployed (default): `https://<project-ref>.supabase.co/functions/v1/analyze`
+  - Local dev: `http://localhost:3001/api/summarize`
+- **Dashboard URL** — where **Send to dashboard** opens.
+  - Deployed (default): `https://resilience-hub-delta.vercel.app/`
+  - Local dev: `http://localhost:5173/`
 - **Supabase anon key** (optional) — only if your deployed function rejects unauthenticated
   calls; it's sent as the `apikey` header. The anon key is public/non-secret.
 

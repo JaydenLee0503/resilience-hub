@@ -15,12 +15,12 @@ import { runGuardian } from './vendor/guardian.js';
 pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('vendor/pdf.worker.min.mjs');
 
 // Backend endpoints are configurable on the options page. The defaults point at
-// the deployed Supabase Edge Function so the extension works with no setup; for
-// local development, override the Summarizer endpoint with
-// http://localhost:3001/api/summarize in the options.
+// the deployed Supabase Edge Function + Vercel dashboard so the extension works
+// with no setup. For local development, override these in the options page with
+// http://localhost:3001/api/summarize and http://localhost:5173/.
 const DEFAULTS = {
-  summarizeUrl: 'http://localhost:3001/api/summarize',
-  appUrl: 'http://localhost:5173/',
+  summarizeUrl: 'https://uzxxjbtiyyxxadzovkqg.supabase.co/functions/v1/analyze',
+  appUrl: 'https://resilience-hub-delta.vercel.app/',
   anonKey: '',
 };
 const MAX_URL_TEXT = 12000;
@@ -335,14 +335,16 @@ async function openInApp(text, source, appUrl) {
     : '';
   const payload = prefix + text.slice(0, MAX_URL_TEXT);
 
-  // Generate opaque import ID and store payload in session storage
-  const importId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  await chrome.storage.session.set({
-    [importId]: { source, text: payload, timestamp: Date.now() }
+  // Hand the text to the dashboard via the URL *hash fragment* — App.jsx
+  // readExtensionImport() reads it from location.hash and strips it on load.
+  // The fragment is never sent to the server, so the document text stays out of
+  // server logs (a normal web page also cannot read chrome.storage.session).
+  const base = (appUrl || DEFAULTS.appUrl).split('#')[0];
+  const params = new URLSearchParams({
+    extensionText: payload,
+    extensionSource: source || 'Chrome import',
   });
-
-  const base = appUrl || DEFAULTS.appUrl;
-  const url = `${base}?extensionImportId=${encodeURIComponent(importId)}`;
+  const url = `${base}#${params.toString()}`;
   await chrome.tabs.create({ url });
 }
 
