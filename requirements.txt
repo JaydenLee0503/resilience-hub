@@ -1,0 +1,3 @@
+# Resilience Hub is a Node.js/Vite/React project.
+# Render should install runtime dependencies from package.json/package-lock.json.
+# There are no Python package dependencies for the current app.

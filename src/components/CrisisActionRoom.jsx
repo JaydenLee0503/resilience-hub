@@ -3,6 +3,7 @@ import { rehydrateDeep } from '../agents/rehydrate';
 import { runChat } from '../agents/chat';
 import { PIPELINE_LABELS } from '../agents/pipelines/classifier';
 import { downloadPdfReport, downloadTextReport } from '../lib/reportExport';
+import { addDeadlineToGoogleCalendar } from '../lib/googleCalendar';
 
 /**
  * CrisisActionRoom — renders the canonical Resilience Hub output schema.
@@ -48,6 +49,7 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
   const [chatInput, setChatInput] = useState('');
   const [chatPending, setChatPending] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
+  const [calendarStatus, setCalendarStatus] = useState({});
   const shellRef = useRef(null);
 
   // Keep the docked chat panel offset in sync with the real nav height.
@@ -92,6 +94,19 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
     low:      { color: '#4ade80', label: 'Low urgency' },
   };
   const urgency = URGENCY[d.urgency] ?? URGENCY.medium;
+
+  const handleAddDeadline = useCallback(async (deadline, index) => {
+    setCalendarStatus((prev) => ({ ...prev, [index]: { state: 'adding', message: 'Adding...' } }));
+    try {
+      await addDeadlineToGoogleCalendar(deadline);
+      setCalendarStatus((prev) => ({ ...prev, [index]: { state: 'added', message: 'Added to Google Calendar' } }));
+    } catch (err) {
+      setCalendarStatus((prev) => ({
+        ...prev,
+        [index]: { state: 'error', message: err.message || 'Could not add to Calendar' },
+      }));
+    }
+  }, []);
 
   return (
     <div className={`product-shell report-shell ${chatOpen ? 'chat-open' : ''}`} style={{ minHeight: '100vh' }} ref={shellRef}>
@@ -195,15 +210,47 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
           <section className="report-section">
             <span className="report-label">Deadlines</span>
             <div className="report-rows">
-              {d.deadlines.map((dl, i) => (
-                <div key={i} className="report-row">
-                  <span className="report-date">{dl.date}</span>
-                  <div>
-                    <p className="report-task">{dl.task}</p>
-                    {dl.consequence && <p className="report-meta">If missed: {dl.consequence}</p>}
+              {d.deadlines.map((dl, i) => {
+                const status = calendarStatus[i];
+                const isAdded = status?.state === 'added';
+                const isAdding = status?.state === 'adding';
+                const consequence = cleanIfMissedPrefix(dl.consequence);
+                return (
+                  <div key={i} className="report-row">
+                    <span className="report-date">{dl.date}</span>
+                    <div>
+                      <p className="report-task">{dl.task}</p>
+                      {consequence && <p className="report-meta">If missed: {consequence}</p>}
+                      {status?.message && (
+                        <p
+                          className="report-meta"
+                          style={{
+                            color: isAdded ? '#4ade80' : status.state === 'error' ? '#fca5a5' : undefined,
+                            fontWeight: isAdded ? 700 : undefined,
+                          }}
+                        >
+                          {status.message}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      className={`report-nav-btn ${isAdded ? 'accent' : ''}`}
+                      type="button"
+                      onClick={() => handleAddDeadline(dl, i)}
+                      disabled={isAdding || isAdded}
+                      style={{
+                        marginLeft: 'auto',
+                        alignSelf: 'flex-start',
+                        whiteSpace: 'nowrap',
+                        opacity: isAdded ? 0.85 : undefined,
+                        cursor: isAdded ? 'default' : undefined,
+                      }}
+                    >
+                      {isAdding ? 'Adding...' : isAdded ? 'Added to Calendar' : 'Add to Calendar'}
+                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
@@ -350,4 +397,8 @@ function answerFromReport(question, report) {
 function listAnswer(items = [], prefix) {
   if (!items.length) return `${prefix}: the report did not extract a clear item for this.`;
   return `${prefix}: ${items.slice(0, 3).join(' | ')}`;
+}
+
+function cleanIfMissedPrefix(value) {
+  return String(value || '').replace(/^\s*if\s+missed\s*:\s*/i, '').trim();
 }
