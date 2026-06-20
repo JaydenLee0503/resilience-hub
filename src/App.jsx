@@ -781,15 +781,17 @@ function toAccount(user) {
 
 function readExtensionImport() {
   if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
+  // The extension passes the import in the URL hash (not the query string) so the
+  // sensitive document text is never sent to the server or written to server logs.
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const text = params.get('extensionText');
   if (!text) return null;
 
   const source = params.get('extensionSource') || 'Chrome PDF import';
   params.delete('extensionText');
   params.delete('extensionSource');
-  const nextSearch = params.toString();
-  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+  const nextHash = params.toString();
+  const nextUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
   window.history.replaceState({}, '', nextUrl);
 
   return { text, source };

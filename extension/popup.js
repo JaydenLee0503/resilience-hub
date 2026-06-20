@@ -335,15 +335,16 @@ async function openInApp(text, source, appUrl) {
     : '';
   const payload = prefix + text.slice(0, MAX_URL_TEXT);
 
-  // Hand the text to the dashboard via URL params — App.jsx readExtensionImport()
-  // reads `extensionText` + `extensionSource` and strips them from the URL on load.
-  // (A normal web page cannot read chrome.storage.session, so the URL is the bridge.)
-  const base = appUrl || DEFAULTS.appUrl;
+  // Hand the text to the dashboard via the URL *hash fragment* — App.jsx
+  // readExtensionImport() reads it from location.hash and strips it on load.
+  // The fragment is never sent to the server, so the document text stays out of
+  // server logs (a normal web page also cannot read chrome.storage.session).
+  const base = (appUrl || DEFAULTS.appUrl).split('#')[0];
   const params = new URLSearchParams({
     extensionText: payload,
     extensionSource: source || 'Chrome import',
   });
-  const url = `${base}${base.includes('?') ? '&' : '?'}${params.toString()}`;
+  const url = `${base}#${params.toString()}`;
   await chrome.tabs.create({ url });
 }
 

@@ -13,9 +13,11 @@
 // No PII is involved — only a pipeline type and a user-entered city/address.
 
 // ─── CORS ──────────────────────────────────────────────────────────────────
-// Mirrors supabase/functions/analyze/index.ts. Lock to your frontend origin in
-// production by setting the ALLOWED_ORIGIN secret.
-const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
+// Defaults to the deployed frontend origin (not "*") so the endpoint isn't open
+// to every origin. Override with the ALLOWED_ORIGIN secret if the frontend URL
+// changes.
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ??
+  "https://resilience-hub-delta.vercel.app";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
@@ -156,7 +158,8 @@ Deno.serve(async (req: Request) => {
   try {
     fsqRes = await fetchFoursquarePlaces(params, FOURSQUARE_KEY);
   } catch (err) {
-    return json({ error: "Failed to reach Foursquare Places.", detail: String(err) }, 502);
+    console.error("[find-support] Foursquare fetch failed:", err);
+    return json({ error: "Failed to reach Foursquare Places." }, 502);
   }
 
   if (!fsqRes.ok) {
@@ -172,7 +175,8 @@ Deno.serve(async (req: Request) => {
 
   const data = await fsqRes.json();
   const origin = readFoursquareOrigin(data);
-  const sourceResults = data.results || data.places || data.data || [];
+  const rawResults = data.results || data.places || data.data;
+  const sourceResults = Array.isArray(rawResults) ? rawResults : [];
   // deno-lint-ignore no-explicit-any
   const results = (sourceResults as any[]).map((place) => {
     const coords = readFoursquareCoords(place);

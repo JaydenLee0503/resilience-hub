@@ -10,7 +10,7 @@ returned coordinates with Leaflet. No PII is involved.
 
 ## Request / response
 
-```
+```http
 POST /functions/v1/find-support
 Body: { "location": "Toronto, ON", "pipelineType"?: "housing" }
 
@@ -39,12 +39,14 @@ curl -s http://localhost:54321/functions/v1/find-support \
 
 ```bash
 npx supabase secrets set FOURSQUARE_KEY=...      # raw Places API key, no "Bearer"
-npx supabase functions deploy find-support
+# JWT verification is currently OFF (matches the analyze function and the dev
+# command above); the client calls this function without a user token.
+npx supabase functions deploy find-support --no-verify-jwt
 ```
 
 Then in the frontend (Vercel env vars) set:
 
-```
+```bash
 VITE_SUPPORT_URL=https://<project-ref>.supabase.co/functions/v1/find-support
 ```
 
