@@ -454,6 +454,16 @@ The context is privacy-tokenized: real dates, amounts, names, and IDs appear as 
 
 If the answer is not in the context, say you do not see it in the report and suggest checking the original document or a qualified professional. Reply in 2-4 short sentences at a grade-6 reading level, second person ("you"). Plain text only — no JSON, no markdown.`;
 
+// Quick summarizer for the Chrome extension — mirrors server/dev.js.
+const SUMMARIZE_SYSTEM_PROMPT = `You are a concise summarizer inside Beacon Atlas. Summarize the document the user gives you so a stressed person can grasp it fast.
+
+The text is privacy-tokenized: real dates, amounts, names, and IDs appear as tokens like [DATE_1] or [AMOUNT_1]. Keep these tokens EXACTLY as they appear. Never invent or guess the real value behind a token.
+
+Reply in plain text at a grade-6 reading level, second person ("you"):
+- One sentence saying what the document is.
+- Then 3 to 5 short "- " bullet points covering what matters, any deadline, and what to do next.
+No JSON, no markdown headings, no preamble — just the sentence and the bullets.`;
+
 const PIPELINE_PROMPTS: Record<string, string> = {
   immigration: IMMIGRATION_SYSTEM_PROMPT,
   medical: MEDICAL_SYSTEM_PROMPT,
@@ -500,7 +510,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Server is not configured (missing FEATHERLESS_API_KEY)." }, 500);
   }
 
-  let payload: { tokenizedText?: unknown; pipelineType?: unknown; mode?: unknown; question?: unknown; context?: unknown };
+  let payload: { tokenizedText?: unknown; pipelineType?: unknown; mode?: unknown; question?: unknown; context?: unknown; text?: unknown };
   try {
     payload = await req.json();
   } catch {
@@ -510,6 +520,15 @@ Deno.serve(async (req: Request) => {
   // Follow-up chat path (same function, branches on mode).
   if (payload?.mode === "chat") {
     return await handleChat(payload, {
+      FEATHERLESS_API_KEY,
+      FEATHERLESS_BASE_URL,
+      FEATHERLESS_MODEL,
+    });
+  }
+
+  // Quick-summary path for the Chrome extension (branches on mode).
+  if (payload?.mode === "summarize") {
+    return await handleSummarize(payload, {
       FEATHERLESS_API_KEY,
       FEATHERLESS_BASE_URL,
       FEATHERLESS_MODEL,
@@ -625,6 +644,58 @@ async function handleChat(
   return json({ answer: answer || "I could not find an answer in your report. Check the original document or a qualified professional." }, 200);
 }
 
+// ─── Summarizer handler (Chrome extension) ─────────────────────────────────
+async function handleSummarize(
+  payload: { text?: unknown },
+  cfg: { FEATHERLESS_API_KEY: string; FEATHERLESS_BASE_URL: string; FEATHERLESS_MODEL: string },
+): Promise<Response> {
+  const text = payload?.text;
+  if (typeof text !== "string" || text.trim().length < 30) {
+    return json({ error: "Field 'text' (min 30 chars, tokenized) is required." }, 400);
+  }
+
+  // Guardian must run on the device before this; verify no residual PII.
+  const residualPii = auditRawPii(text);
+  if (residualPii.length > 0) {
+    return json({
+      error: `Guardian blocked this summary because the text still looks sensitive: ${residualPii.join(", ")}`,
+    }, 422);
+  }
+
+  const truncated = text.length > 8000 ? text.slice(0, 8000) + "\n[Truncated due to context limits]" : text;
+
+  let providerRes: Response;
+  try {
+    providerRes = await fetch(`${cfg.FEATHERLESS_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${cfg.FEATHERLESS_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: cfg.FEATHERLESS_MODEL,
+        temperature: 0.2,
+        max_tokens: 500,
+        messages: [
+          { role: "system", content: SUMMARIZE_SYSTEM_PROMPT },
+          { role: "user", content: `Summarize this tokenized document:\n\n${truncated.trim()}` },
+        ],
+      }),
+    });
+  } catch (err) {
+    return json({ error: "Failed to reach the model provider.", detail: String(err) }, 502);
+  }
+
+  if (!providerRes.ok) {
+    const detail = await providerRes.text().catch(() => "");
+    return json({ error: `Model provider error ${providerRes.status}.`, detail: detail.slice(0, 300) }, 502);
+  }
+
+  const data = await providerRes.json();
+  const summary = (data?.choices?.[0]?.message?.content ?? "").trim();
+  return json({ summary: summary || "No summary could be generated. Try the full analysis in the dashboard instead." }, 200);
+}
+
 // ─── Parsing + normalization (mirrors server/dev.js) ───────────────────────
 function parseModelJson(rawText: string): Record<string, unknown> | null {
   const clean = String(rawText || "")
@@ -647,6 +718,20 @@ const VALID_TYPES = new Set([
 ]);
 const VALID_URGENCY = new Set(["low", "medium", "high", "critical"]);
 const asArray = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
+
+// ─── PII audit helper ──────────────────────────────────────────────────────
+// Mirrors server/dev.js auditRawPii — checks for residual PII patterns that
+// should have been tokenized by Guardian.
+function auditRawPii(text: string): string[] {
+  const checks: [string, RegExp][] = [
+    ['SSN', /\b\d{3}-\d{2}-\d{4}\b/],
+    ['SIN', /\b\d{3}[- ]\d{3}[- ]\d{3}\b/],
+    ['AMOUNT', /\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/],
+    ['PHONE', /(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/],
+    ['POSTAL', /\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/i],
+  ];
+  return checks.filter(([, regex]) => regex.test(text)).map(([name]) => name);
+}
 
 function normalizeAnalysis(
   value: Record<string, unknown> | null,

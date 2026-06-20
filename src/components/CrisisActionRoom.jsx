@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { rehydrateDeep } from '../agents/rehydrate';
 import { runChat } from '../agents/chat';
 import { PIPELINE_LABELS } from '../agents/pipelines/classifier';
@@ -47,8 +47,23 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
   const doneCount = checklist.filter((i) => checked.has(i.id)).length;
   const [chatInput, setChatInput] = useState('');
   const [chatPending, setChatPending] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
+  const shellRef = useRef(null);
+
+  // Keep the docked chat panel offset in sync with the real nav height.
+  useEffect(() => {
+    const shell = shellRef.current;
+    const nav = shell?.querySelector('.product-nav');
+    if (!shell || !nav) return;
+    const apply = () => shell.style.setProperty('--nav-h', `${nav.offsetHeight}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(nav);
+    window.addEventListener('resize', apply);
+    return () => { ro.disconnect(); window.removeEventListener('resize', apply); };
+  }, []);
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Ask me what matters, what happens if you ignore it, what to do next, who can help, or which deadline is most urgent.' },
+    { role: 'assistant', text: 'Ask me anything about this report.' },
   ]);
 
   const askQuestion = useCallback(async () => {
@@ -79,7 +94,7 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
   const urgency = URGENCY[d.urgency] ?? URGENCY.medium;
 
   return (
-    <div className="product-shell report-shell" style={{ minHeight: '100vh' }}>
+    <div className={`product-shell report-shell ${chatOpen ? 'chat-open' : ''}`} style={{ minHeight: '100vh' }} ref={shellRef}>
 
       {/* ── Sticky nav ── */}
       <nav className="product-nav report-product-nav">
@@ -98,6 +113,13 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
         <div className="nav-side nav-right report-nav-actions">
           <button className="report-nav-btn" onClick={() => downloadTextReport(d)}>Download TXT</button>
           <button className="report-nav-btn" onClick={() => downloadPdfReport(d)}>Download PDF</button>
+          <button
+            className={`report-nav-btn ${chatOpen ? '' : 'accent'}`}
+            onClick={() => setChatOpen((v) => !v)}
+            aria-expanded={chatOpen}
+          >
+            {chatOpen ? 'Hide chat' : 'Chat'}
+          </button>
         </div>
       </nav>
 
@@ -212,21 +234,32 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
           </section>
         )}
 
-        {/* ── Follow-up chat ── */}
-        <section className="report-section">
-          <span className="report-label">Follow-up chat</span>
-          <div className="report-chat">
-            {messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className={`report-bubble ${message.role}`}>
-                {message.text}
-              </div>
-            ))}
-            {chatPending && (
-              <div className="report-bubble assistant report-typing">
-                <span /><span /><span />
-              </div>
-            )}
-          </div>
+        {/* ── Disclaimer ── */}
+        <p className="report-disclaimer">
+          {d.disclaimer || 'This is an AI-generated summary for informational purposes only. It is not legal, medical, or immigration advice. Verify all deadlines and decisions with a qualified professional before acting.'}
+        </p>
+
+      </div>
+
+      {/* ── Follow-up chat — docked sidebar ── */}
+      <aside className={`report-chat-panel ${chatOpen ? 'open' : ''}`} aria-hidden={!chatOpen}>
+        <div className="report-chat-panel-head">
+          <span className="report-label" style={{ margin: 0 }}>Follow-up chat</span>
+          <button className="report-chat-close" onClick={() => setChatOpen(false)} aria-label="Hide chat">×</button>
+        </div>
+        <div className="report-chat">
+          {messages.map((message, index) => (
+            <div key={`${message.role}-${index}`} className={`report-bubble ${message.role}`}>
+              {message.text}
+            </div>
+          ))}
+          {chatPending && (
+            <div className="report-bubble assistant report-typing">
+              <span /><span /><span />
+            </div>
+          )}
+        </div>
+        <div className="report-chat-panel-foot">
           <div className="report-ask">
             <input
               value={chatInput}
@@ -238,14 +271,8 @@ export default function CrisisActionRoom({ analysis, mappingTable, guardianStats
             <button onClick={askQuestion} disabled={chatPending}>{chatPending ? '…' : 'Ask'}</button>
           </div>
           <p className="report-chat-note report-mono">Answered by AI from your tokenized report — your real values never leave this device.</p>
-        </section>
-
-        {/* ── Disclaimer ── */}
-        <p className="report-disclaimer">
-          {d.disclaimer || 'This is an AI-generated summary for informational purposes only. It is not legal, medical, or immigration advice. Verify all deadlines and decisions with a qualified professional before acting.'}
-        </p>
-
-      </div>
+        </div>
+      </aside>
     </div>
   );
 }

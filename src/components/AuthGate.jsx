@@ -181,10 +181,19 @@ export default function AuthGate({ onBack }) {
   );
 }
 
-export function ProductNav({ onBack, account, onLogout }) {
+export function ProductNav({ onBack, account, onLogout, historyOpen, onToggleHistory }) {
   return (
     <nav className="product-nav">
       <div className="nav-side nav-left">
+        {onToggleHistory && (
+          <button
+            className={`report-nav-btn ${historyOpen ? '' : 'accent'}`}
+            onClick={onToggleHistory}
+            aria-expanded={historyOpen}
+          >
+            {historyOpen ? 'Hide history' : 'History'}
+          </button>
+        )}
         {onBack && (
           <button className="ghost-button" onClick={onBack}>Back</button>
         )}

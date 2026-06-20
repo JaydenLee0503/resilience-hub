@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Beacon Atlas PDF Sender</title>
+    <title>Beacon Atlas</title>
     <style>
       body {
-        width: 310px;
+        width: 320px;
         margin: 0;
         padding: 16px;
         color: #eef1f7;
@@ -23,6 +23,10 @@
         margin: 0 0 14px;
         color: #98a2bb;
       }
+      .actions {
+        display: grid;
+        gap: 8px;
+      }
       button {
         width: 100%;
         border: 1px solid rgba(91, 140, 255, 0.55);
@@ -34,19 +38,45 @@
         text-transform: uppercase;
         cursor: pointer;
       }
+      button.secondary {
+        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
       #status {
         margin-top: 12px;
-        min-height: 36px;
+        min-height: 18px;
         color: #c4d0ff;
         font-size: 12px;
+      }
+      #summary {
+        margin-top: 12px;
+        max-height: 260px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #dfe6ff;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 10px;
+      }
+      #summary:empty {
+        display: none;
       }
     </style>
   </head>
   <body>
     <h1>Beacon Atlas</h1>
-    <p>Send selectable text from this PDF or page into your local dashboard.</p>
-    <button id="send">Send current tab</button>
+    <p>Read this PDF or page. PII is tokenized in your browser before any AI sees it.</p>
+    <div class="actions">
+      <button id="summarize">Summarize here</button>
+      <button id="send" class="secondary">Send to dashboard</button>
+    </div>
     <div id="status" role="status"></div>
-    <script src="popup.js"></script>
+    <div id="summary"></div>
+    <script type="module" src="popup.js"></script>
   </body>
 </html>

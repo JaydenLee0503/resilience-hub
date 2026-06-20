@@ -24,6 +24,10 @@ import { rehydrateDeep } from './agents/rehydrate';
 import { supabase } from './lib/supabaseClient';
 import { saveReport } from './lib/reports';
 
+import { geoOrthographic, geoPath, geoGraticule10 } from 'd3-geo';
+import { merge as topoMerge, mesh as topoMesh } from 'topojson-client';
+import worldData from './data/world-110m.json';
+
 // ─── Beacon Atlas template helpers (unchanged from original) ───────────────
 
 // The headline the .dc.html ships with as its default (see data-props in the file).
@@ -350,6 +354,10 @@ function useBeaconAnimations(hostRef, active = true) {
       mission: sceneMission,
     };
 
+    // Realistic Earth globe (ported from "Globe Loader.html"): d3-geo
+    // orthographic projection + topojson land/borders, a shaded sphere, a
+    // graticule, and a tilted orbit ring with riding particles. Orbit colors
+    // use the page accents so the ring reads against the dark hero.
     const initGlobe = () => {
       const canvas = root.querySelector('[data-globe-canvas]');
       const ctx = canvas?.getContext('2d');
@@ -359,130 +367,150 @@ function useBeaconAnimations(hostRef, active = true) {
       const accentA = (computed.getPropertyValue('--a') || '#5b8cff').trim();
       const accentB = (computed.getPropertyValue('--b') || '#a06bff').trim();
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const deg = Math.PI / 180;
+      const NAVY = '#16315c';
+
       let running = true;
-      let theta = 0.4;
-      let time = 0;
       let raf = 0;
+      let lambda = 0;
+      let s = 1;                 // scale vs the loader's 240px design unit
+      let cx = 0, cy = 0, R = 150;
+
+      const projection = geoOrthographic().clipAngle(90);
+      const path = geoPath(projection, ctx);
+      const graticule = geoGraticule10();
+
+      // World land + country borders (embedded data, no network).
+      let land = null, borders = null;
+      try {
+        land = topoMerge(worldData, worldData.objects.countries.geometries);
+        borders = topoMesh(worldData, worldData.objects.countries, (a, b) => a !== b);
+      } catch (e) { /* still draw the shaded sphere + graticule */ }
+
+      // Tilted 3D orbit rings; lengths are in the 240px design unit, scaled by s.
+      const ELEV = 0.30;
+      const sinE = Math.sin(ELEV), cosE = Math.cos(ELEV);
+      const rings = [
+        { rad: 206, phi: -0.34, w: 1.6, alpha: 0.55, color: accentA },
+        { rad: 238, phi: -0.20, w: 1.1, alpha: 0.32, color: accentB },
+      ];
+      const particles = [];
+      for (let i = 0; i < 22; i++) {
+        const ring = i % 3 === 0 ? rings[1] : rings[0];
+        particles.push({
+          ring,
+          t0: Math.random() * Math.PI * 2,
+          speed: 0.5 + Math.random() * 0.7,
+          size: 1.6 + Math.random() * 3.0,
+        });
+      }
+
+      const ringPoint = (ring, t) => {
+        const X = Math.cos(t) * ring.rad * s;
+        const Yp = Math.sin(t) * ring.rad * s;
+        const sy = Yp * sinE;       // flatten into an ellipse
+        const z = Yp * cosE;        // depth toward / away from viewer
+        const cphi = Math.cos(ring.phi), sphi = Math.sin(ring.phi);
+        const rx = X * cphi - sy * sphi;
+        const ry = X * sphi + sy * cphi;
+        return { x: cx + rx, y: cy - ry, z };
+      };
+
+      const drawRingPath = (ring, front) => {
+        const STEP = 0.06;
+        ctx.lineWidth = ring.w * s;
+        ctx.lineCap = 'round';
+        let drawing = false;
+        for (let t = 0; t <= Math.PI * 2 + STEP; t += STEP) {
+          const p = ringPoint(ring, t);
+          if ((p.z >= 0) === front) {
+            if (!drawing) { ctx.beginPath(); ctx.moveTo(p.x, p.y); drawing = true; }
+            else ctx.lineTo(p.x, p.y);
+          } else if (drawing) {
+            ctx.strokeStyle = hexRgba(ring.color, front ? ring.alpha : ring.alpha * 0.5);
+            ctx.stroke();
+            drawing = false;
+          }
+        }
+        if (drawing) {
+          ctx.strokeStyle = hexRgba(ring.color, front ? ring.alpha : ring.alpha * 0.5);
+          ctx.stroke();
+        }
+      };
+
+      const drawParticles = (front, time) => {
+        for (const p of particles) {
+          const pt = ringPoint(p.ring, p.t0 + time * p.speed);
+          if ((pt.z >= 0) !== front) continue;
+          const depth = (pt.z / (p.ring.rad * s) + 1) / 2;   // 0 back .. 1 front
+          const alpha = 0.20 + depth * 0.7;
+          const sz = p.size * s * (0.55 + depth * 0.7);
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, sz, 0, Math.PI * 2);
+          ctx.fillStyle = hexRgba(p.ring.color, alpha);
+          ctx.fill();
+        }
+      };
+
+      const drawGlobe = () => {
+        const g = ctx.createRadialGradient(cx - R * 0.4, cy - R * 0.4, R * 0.2, cx, cy, R * 1.05);
+        g.addColorStop(0, '#eef0f5');
+        g.addColorStop(1, '#cfd6e2');
+        ctx.beginPath(); path({ type: 'Sphere' }); ctx.fillStyle = g; ctx.fill();
+
+        ctx.beginPath(); path(graticule);
+        ctx.strokeStyle = 'rgba(22,49,92,0.16)'; ctx.lineWidth = 1 * s; ctx.stroke();
+
+        if (land) {
+          ctx.beginPath(); path(land); ctx.fillStyle = NAVY; ctx.fill();
+        }
+        if (borders) {
+          ctx.beginPath(); path(borders);
+          ctx.strokeStyle = 'rgba(207,214,226,0.6)'; ctx.lineWidth = 0.6 * s; ctx.stroke();
+        }
+
+        ctx.beginPath(); path({ type: 'Sphere' });
+        ctx.strokeStyle = NAVY; ctx.lineWidth = 2 * s; ctx.stroke();
+      };
+
+      const render = (time) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // 1) back half of the orbit (partly hidden by the globe)
+        for (const ring of rings) drawRingPath(ring, false);
+        drawParticles(false, time);
+        // 2) the opaque globe occludes the back orbit within its disc
+        drawGlobe();
+        // 3) front half of the orbit, over the globe
+        for (const ring of rings) drawRingPath(ring, true);
+        drawParticles(true, time);
+      };
 
       const resize = () => {
         const size = canvas.clientWidth || 480;
         canvas.width = Math.round(size * dpr);
         canvas.height = Math.round(size * dpr);
+        cx = canvas.width / 2;
+        cy = canvas.height / 2;
+        s = (Math.min(canvas.width, canvas.height) / 2) / 240;
+        R = 150 * s;
+        projection.scale(R).translate([cx, cy]);
       };
 
-      const nodes = [
-        [40.7, -74], [51.5, -0.1], [19.4, -99.1], [28.6, 77.2],
-        [-23.5, -46.6], [35.7, 139.7], [-33.9, 18.4], [1.3, 103.8],
-        [30, 31.2], [48.8, 2.3], [-1.3, 36.8], [25, 55.3],
-      ].map((node) => [node[0] * deg, node[1] * deg]);
-      const arcs = [[0,1],[0,4],[1,8],[3,7],[5,9],[2,0],[6,10],[8,3],[11,5]];
-
-      const vec = (phi, lam) => [
-        Math.cos(phi) * Math.sin(lam), Math.sin(phi), Math.cos(phi) * Math.cos(lam),
-      ];
-      const rotY = (vector, angle) => {
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        return [vector[0]*cos+vector[2]*sin, vector[1], -vector[0]*sin+vector[2]*cos];
-      };
-
-      const draw = () => {
+      let startTs = null;
+      const frame = (ts) => {
         if (!running) return;
-        const width = canvas.width, height = canvas.height;
-        const cx = width / 2, cy = height / 2;
-        const radius = Math.min(width, height) * 0.42;
-
-        ctx.clearRect(0, 0, width, height);
-        ctx.lineWidth = Math.max(1, dpr * 0.8);
-
-        const rings = [];
-        for (let la = -60; la <= 60; la += 30) {
-          const pts = [];
-          for (let k = 0; k <= 72; k++) {
-            pts.push(rotY(vec(la * deg, (k / 72) * Math.PI * 2), theta));
-          }
-          rings.push(pts);
-        }
-        for (let lo = 0; lo < 180; lo += 30) {
-          const pts = [];
-          for (let k = 0; k <= 48; k++) {
-            pts.push(rotY(vec(-Math.PI / 2 + (k / 48) * Math.PI, lo * deg), theta));
-          }
-          rings.push(pts);
-        }
-
-        rings.forEach((pts) => {
-          let previousFront = null;
-          pts.forEach((v, i) => {
-            const front = v[2] >= 0;
-            const sx = cx + radius * v[0], sy = cy - radius * v[1];
-            if (i === 0 || front !== previousFront) {
-              if (i > 0) ctx.stroke();
-              ctx.beginPath();
-              ctx.moveTo(sx, sy);
-              ctx.strokeStyle = front ? hexRgba(accentA, 0.34) : hexRgba(accentA, 0.07);
-            } else ctx.lineTo(sx, sy);
-            previousFront = front;
-          });
-          ctx.stroke();
-        });
-
-        arcs.forEach((pair, index) => {
-          const start = vec(nodes[pair[0]][0], nodes[pair[0]][1]);
-          const end   = vec(nodes[pair[1]][0], nodes[pair[1]][1]);
-          const dot   = Math.max(-1, Math.min(1, start[0]*end[0]+start[1]*end[1]+start[2]*end[2]));
-          const omega = Math.acos(dot) || 0.0001;
-          const sinOmega = Math.sin(omega);
-          let started = false;
-
-          ctx.beginPath();
-          for (let step = 0; step <= 40; step++) {
-            const amount = step / 40;
-            const wA = Math.sin((1-amount)*omega)/sinOmega, wB = Math.sin(amount*omega)/sinOmega;
-            let vector = [start[0]*wA+end[0]*wB, start[1]*wA+end[1]*wB, start[2]*wA+end[2]*wB];
-            const lift = 1 + 0.16 * Math.sin(Math.PI * amount);
-            vector = rotY([vector[0]*lift, vector[1]*lift, vector[2]*lift], theta);
-            const sx = cx+radius*vector[0], sy = cy-radius*vector[1];
-            if (vector[2] < -0.1) { started = false; }
-            else if (!started) { ctx.moveTo(sx, sy); started = true; }
-            else ctx.lineTo(sx, sy);
-          }
-          ctx.strokeStyle = hexRgba(index%2 ? accentB : accentA, 0.5);
-          ctx.lineWidth = Math.max(1, dpr * 1.1);
-          ctx.stroke();
-
-          const pulse = (time * 0.18 + index * 0.23) % 1;
-          const wA = Math.sin((1-pulse)*omega)/sinOmega, wB = Math.sin(pulse*omega)/sinOmega;
-          let pv = [start[0]*wA+end[0]*wB, start[1]*wA+end[1]*wB, start[2]*wA+end[2]*wB];
-          const lift2 = 1 + 0.16 * Math.sin(Math.PI * pulse);
-          pv = rotY([pv[0]*lift2, pv[1]*lift2, pv[2]*lift2], theta);
-          if (pv[2] >= -0.1) {
-            const sx = cx+radius*pv[0], sy = cy-radius*pv[1];
-            ctx.beginPath();
-            ctx.arc(sx, sy, dpr*2.4, 0, Math.PI*2);
-            ctx.fillStyle = hexRgba(index%2 ? accentB : accentA, 0.95);
-            ctx.fill();
-          }
-        });
-
-        nodes.forEach((node) => {
-          const vector = rotY(vec(node[0], node[1]), theta);
-          if (vector[2] < 0) return;
-          const sx = cx+radius*vector[0], sy = cy-radius*vector[1];
-          ctx.beginPath(); ctx.arc(sx,sy,dpr*3.2,0,Math.PI*2);
-          ctx.fillStyle = hexRgba(accentB,0.18); ctx.fill();
-          ctx.beginPath(); ctx.arc(sx,sy,dpr*1.5,0,Math.PI*2);
-          ctx.fillStyle = '#dfe6ff'; ctx.fill();
-        });
-
-        theta += 0.0018; time += 0.016;
-        raf = requestAnimationFrame(draw);
+        if (startTs === null) startTs = ts;
+        const time = (ts - startTs) / 1000;
+        lambda += 0.45;
+        projection.rotate([lambda, -18, 0]);
+        render(time);
+        raf = requestAnimationFrame(frame);
       };
 
       resize();
       window.addEventListener('resize', resize);
-      draw();
+      projection.rotate([lambda, -18, 0]);
+      render(0);                 // immediate first paint
+      raf = requestAnimationFrame(frame);
       return { stop: () => { running = false; cancelAnimationFrame(raf); window.removeEventListener('resize', resize); } };
     };
 
@@ -771,7 +799,7 @@ export default function App() {
 
     const timer = window.setTimeout(() => {
       const tryButtons = [...host.querySelectorAll('button')].filter((b) =>
-        b.textContent.includes('Try')
+        b.textContent.includes('Try') || b.textContent.includes('Get started')
       );
       const handler = () => setView(account ? 'dashboard' : 'login');
       tryButtons.forEach((b) => b.addEventListener('click', handler));
